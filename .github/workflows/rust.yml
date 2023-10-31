@@ -13,6 +13,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Set Release Flag
+      # todo: Set release condition as flag
       run: |
         current_version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
         latest_version=$(curl -s https://crates.io/api/v1/crates/none-shall-pass | jq -r '.versions[0].num')
@@ -27,3 +28,8 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - name: Check Compiled Binary
+      # todo: Check if binary is available
+      run: |
+        pwd
+        ls -ltrh
