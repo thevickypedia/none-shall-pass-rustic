@@ -13,7 +13,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Display Cargo Version
-      run: cargo --version
+      run: |
+        version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+        echo "Package Version: $version"
     - name: Build
       run: cargo build --verbose
     - name: Run tests
