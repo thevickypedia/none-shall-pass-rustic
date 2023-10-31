@@ -1,15 +1,10 @@
 # https://doc.rust-lang.org/cargo/getting-started/first-steps.html#first-steps-with-cargo
 [package]
 name = "none-shall-pass"
-version = "0.0.0"
+version = "0.0.1"
 description = "GitHub Action to validate hyperlinks in all markdown files"
 license = "MIT"
 license-file = "LICENSE"
-
-# https://doc.rust-lang.org/cargo/reference/cargo-targets.html#configuring-a-target
-[lib]
-name = "none_shall_pass"  # snake_case, cannot have hyphens
-path = "src/lib.rs"
 
 [dependencies]
 reqwest = { version = "0.11.22", features = ["blocking"] }

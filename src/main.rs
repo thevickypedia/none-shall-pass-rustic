@@ -1,3 +1,3 @@
-fn rustic_validator() {
+pub fn main() {
     println!("Hello World")
 }
