@@ -12,12 +12,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Display Cargo Version
+    - name: Set Release Flag
       run: |
-        version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
-        echo "Package Version: $version"
-    - name: Get Package Version
-      run: curl -s https://crates.io/api/v1/crates/none-shall-pass | jq '.versions[0].num'
+        current_version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+        latest_version=$(curl -s https://crates.io/api/v1/crates/none-shall-pass | jq '.versions[0].num')
+        echo "Cargo Package Version: ${current_version}"
+        echo "Crate Package Version: ${latest_version}"
+        if [ "$latest_version" != "$current_version" ]; then
+          echo "Version has changed. Set release flag to true."
+        else
+          echo "Version has not changed. Set release flag to false."
+        fi
     - name: Build
       run: cargo build --verbose
     - name: Run tests
