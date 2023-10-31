@@ -15,7 +15,7 @@ jobs:
     - name: Set Release Flag
       run: |
         current_version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
-        latest_version=$(curl -s https://crates.io/api/v1/crates/none-shall-pass | jq '.versions[0].num')
+        latest_version=$(curl -s https://crates.io/api/v1/crates/none-shall-pass | jq -r '.versions[0].num')
         echo "Cargo Package Version: ${current_version}"
         echo "Crate Package Version: ${latest_version}"
         if [ "$latest_version" != "$current_version" ]; then
