@@ -16,6 +16,8 @@ jobs:
       run: |
         version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
         echo "Package Version: $version"
+    - name: Get Package Version
+      run: curl -s https://crates.io/api/v1/crates/none-shall-pass | jq '.versions[0].num'
     - name: Build
       run: cargo build --verbose
     - name: Run tests
