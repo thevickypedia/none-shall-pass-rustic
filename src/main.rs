@@ -147,6 +147,7 @@ fn get_exit_code() -> i32 {
 }
 
 fn main() {
+    println!("Activating the 'none-shall-pass' protocol for hyperlink validation in markdown files");
     let start = Instant::now();
     let arguments: Vec<String> = env::args().collect();
     let owner = &arguments[1];
@@ -168,10 +169,10 @@ fn main() {
     for md_file in md_files() {
         runner(&md_file);
     }
-    let elapsed = start.elapsed();
-    println!("Run time: {}s", elapsed.as_secs());
     let code = get_exit_code();
     println!("Exit code: {}", code);
+    let elapsed = start.elapsed();
+    println!("'none-shall-pass' protocol completed. Elapsed time: {:?}s", elapsed.as_secs());
     if code == 1 && fail == "true" {
         println!("Setting exit code to 1");
         exit(code);
