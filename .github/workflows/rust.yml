@@ -47,13 +47,6 @@ jobs:
         else
           cargo test --verbose
         fi
-    - name: Set commit message
-      if: env.release == 'true'
-      run: |
-        commit_notes=$(git log -1 --pretty=%B | tr -d '`')
-        trimmed=$(echo "$commit_notes" | tr -s '[:space:]' | sed ':a;N;$!ba;s/\n/\\n/g')
-        echo "commit_msg=$trimmed" >> $GITHUB_ENV
-      shell: bash
     - name: Copy Compiled Executable
       if: env.release == 'true'
       run: |
@@ -67,10 +60,10 @@ jobs:
       shell: bash
     - name: Create New Release
       if: env.release == 'true'
-      # todo: Set prerelease to false in release_data
       run: |
         release_tag="v${{ env.pkg_version }}"
-        release_data="{\"tag_name\":\"$release_tag\",\"name\":\"$release_tag\",\"body\":\"${{ env.commit_msg }}\",\"draft\":false,\"prerelease\":true}"
+        commit_msg="Release compiled executable for $release_tag"
+        release_data="{\"tag_name\":\"$release_tag\",\"name\":\"$release_tag\",\"body\":\"$commit_msg\",\"draft\":false,\"prerelease\":false}"
         response=$(curl -X POST -H "Authorization: token ${{ secrets.GIT_TOKEN }}" \
           -d "$release_data" \
           "https://api.github.com/repos/${{ github.repository }}/releases")
@@ -90,6 +83,6 @@ jobs:
     - name: Release Crate
       if: env.release == 'true'
       run: |
-        cargo login ${{ env.CRATES_TOKEN }}
+        cargo login ${{ secrets.CRATES_TOKEN }}
         cargo publish
       shell: bash
