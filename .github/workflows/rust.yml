@@ -17,6 +17,7 @@ jobs:
         name=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
         echo "Package Name: $name"
         echo "pkg_name=$name" >> $GITHUB_ENV
+      shell: bash
     - name: Set Release Flag
       run: |
         current_version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
@@ -31,10 +32,18 @@ jobs:
           echo "release=false" >> $GITHUB_ENV
         fi
         echo "pkg_version=$current_version" >> $GITHUB_ENV
+      shell: bash
     - name: Build
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - name: Set commit message
+      if: env.release == 'false'  # todo: set this to true
+      run: |
+        commit_notes=$(git log -1 --pretty=%B | tr -d '`')
+        trimmed=$(echo "$commit_notes" | tr -s '[:space:]' | sed ':a;N;$!ba;s/\n/\\n/g')
+        echo "commit_msg=$trimmed" >> $GITHUB_ENV
+      shell: bash
     - name: Copy Compiled Executable
       if: env.release == 'false'  # todo: set this to true
       run: |
@@ -45,20 +54,22 @@ jobs:
         else
           echo "The file ${{ env.pkg_name }} does not exist in $src_dir."
         fi
-    - name: Create Release and Upload Asset
+      shell: bash
+    - name: Create New Release
       if: env.release == 'false'  # todo: set this to true
       run: |
         release_tag="v${{ env.pkg_version }}"
-
-        # Create the release
+        release_data="{\"tag_name\":\"$release_tag\",\"name\":\"$release_tag\",\"body\":\"${{ env.commit_msg }}\",\"draft\":false,\"prerelease\":true}"
         response=$(curl -X POST -H "Authorization: token ${{ secrets.GIT_TOKEN }}" \
-          -d "{\"tag_name\":\"$release_tag\",\"name\":\"$release_tag\"}" \
-          https://api.github.com/repos/${{ github.repository }}/releases)
+          -d "$release_data" \
+          "https://api.github.com/repos/${{ github.repository }}/releases")
 
         release_id=$(echo $response | jq -r .id)
+        echo "Release ID: $release_id"
 
         # Upload the asset to the release
         curl -X POST -H "Authorization: token ${{ secrets.GIT_TOKEN }}" \
           -H "Content-Type: application/octet-stream" \
           --data-binary @"${{ env.pkg_name }}" \
           "https://uploads.github.com/repos/${{ github.repository }}/releases/$release_id/assets?name=${{ env.pkg_name }}"
+      shell: bash
