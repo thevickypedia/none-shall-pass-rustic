@@ -12,13 +12,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - name: Get Package Name
+      run: |
+        name=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
+        echo "Package Name: $name"
+        echo "pkg_name=$name" >> $GITHUB_ENV
     - name: Set Release Flag
       # todo: Set release condition as flag
       run: |
         current_version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
-        latest_version=$(curl -s https://crates.io/api/v1/crates/none-shall-pass | jq -r '.versions[0].num')
-        echo "Cargo Package Version: ${current_version}"
-        echo "Crate Package Version: ${latest_version}"
+        latest_version=$(curl -s https://crates.io/api/v1/crates/${{ env.pkg_name }} | jq -r '.versions[0].num')
+        echo "Current Package Version: ${current_version}"
+        echo "Latest Package Version: ${latest_version}"
         if [ "$latest_version" != "$current_version" ]; then
           echo "Version has changed. Set release flag to true."
         else
@@ -29,7 +34,11 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
     - name: Check Compiled Binary
-      # todo: Check if binary is available
+      # todo: upload file to GH assets/releases
       run: |
-        pwd
-        ls -ltrh
+        src_dir="target/release"
+        if [ -f "$src_dir/${{ env.pkg_name }}" ]; then
+            echo "The file ${{ env.pkg_name }} exists in $src_dir."
+        else
+            echo "The file ${{ env.pkg_name }} does not exist in $src_dir."
+        fi
