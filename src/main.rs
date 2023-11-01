@@ -2,6 +2,7 @@ extern crate glob;
 extern crate regex;
 extern crate reqwest;
 
+use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io;
@@ -37,14 +38,6 @@ fn get_exclusions() -> Vec<String> {
         exclusions.push(server_ip);
     }
     exclusions
-}
-
-fn get_patterns() -> Vec<&'static str> {
-    let inline_link_re = r"\[([^\]]+)\]\(([^)]+)\)";
-    let footnote_link_text_re = r"\[([^\]]+)\]\[(\d+)\]";
-    let footnote_link_url_re = r"\[(\d+)\]:\s+(\S+)";
-    let anchored_link_re = r"\[([^\]]+)\]:\s+(\S+)";
-    vec![inline_link_re, footnote_link_text_re, footnote_link_url_re, anchored_link_re]
 }
 
 fn md_files() -> Vec<String> {
@@ -84,7 +77,7 @@ fn verify_url(hyperlink: (String, String), exclusions: Vec<String>) {
         return;
     }
     for exclusion in exclusions {
-        if url.starts_with(&exclusion) {
+        if url.contains(&exclusion) {
             println!("'{}' failed to resolve but excluded", url);
             return;
         }
@@ -102,6 +95,54 @@ fn verify_url(hyperlink: (String, String), exclusions: Vec<String>) {
     }
 }
 
+fn find_md_links(markdown: &str) -> Vec<(String, String)> {
+    let inline_link_pattern = r"\[([^\]]+)\]\(([^)]+)\)";
+    let anchored_link_pattern = r"\[([^\]]+)\]:\s+(\S+)";
+    let footnote_link_text_pattern = r"\[([^\]]+)\]\[(\d+)\]";
+    let footnote_link_url_pattern = r"\[(\d+)\]:\s+(\S+)";
+
+    let inline_link_re = Regex::new(inline_link_pattern).expect("Failed to compile regex");
+    let anchored_link_re = Regex::new(anchored_link_pattern).expect("Failed to compile regex");
+    let footnote_link_text_re = Regex::new(footnote_link_text_pattern).expect("Failed to compile regex");
+    let footnote_link_url_re = Regex::new(footnote_link_url_pattern).expect("Failed to compile regex");
+
+    let mut links = Vec::new();
+    for caps in inline_link_re.captures_iter(markdown) {
+        let link_text = caps.get(1).unwrap().as_str().to_string();
+        let link_url = caps.get(2).unwrap().as_str().to_string();
+        links.push((link_text, link_url));
+    }
+
+    for caps in anchored_link_re.captures_iter(markdown) {
+        let link_text = caps.get(1).unwrap().as_str().to_string();
+        let link_url = caps.get(2).unwrap().as_str().to_string();
+        links.push((link_text, link_url));
+    }
+
+    let mut footnote_links = HashMap::new();
+    let mut footnote_urls = HashMap::new();
+
+    for caps in footnote_link_text_re.captures_iter(markdown) {
+        let link_text = caps.get(1).unwrap().as_str().to_string();
+        let link_number: usize = caps.get(2).unwrap().as_str().parse().expect("Failed to parse link number");
+        footnote_links.insert(link_number, link_text);
+    }
+
+    for caps in footnote_link_url_re.captures_iter(markdown) {
+        let link_number: usize = caps.get(1).unwrap().as_str().parse().expect("Failed to parse link number");
+        let link_url = caps.get(2).unwrap().as_str().to_string();
+        footnote_urls.insert(link_number, link_url);
+    }
+
+    for (key, value) in footnote_links.iter() {
+        if let Some(url) = footnote_urls.get(key) {
+            links.push((value.clone(), url.clone()));
+        }
+    }
+
+    links
+}
+
 fn runner(filename: &str) -> bool {
     let mut fail = false;
     let text = match read_file(filename) {
@@ -114,21 +155,17 @@ fn runner(filename: &str) -> bool {
     let text = text.to_string();
     let mut threads = Vec::new();
     let exclusions = get_exclusions();
-    for pattern in get_patterns() {
-        let regex = Regex::new(pattern).expect("Failed to compile regex");
-        for capture in regex.captures_iter(&text) {
-            if let (Some(name), Some(url)) = (capture.get(1), capture.get(2)) {
-                let name = name.as_str().to_string();
-                let url = url.as_str().to_string();
-                // Requires explicit variable assignment to avoid 'use occurs due to use in closure'
-                // Clone exclusions and pass the clone into the closure
-                let exclusions_cloned = exclusions.clone();
-                let handle = thread::spawn(move || {
-                    verify_url((name, url), exclusions_cloned)
-                });
-                threads.push(handle);
-            }
-        }
+    for hyperlink in find_md_links(text.as_str()) {
+        let (name, url) = hyperlink;
+        let name = name.as_str().to_string();
+        let url = url.as_str().to_string();
+        // Requires explicit variable assignment to avoid 'use occurs due to use in closure'
+        // Clone exclusions and pass the clone into the closure
+        let exclusions_cloned = exclusions.clone();
+        let handle = thread::spawn(move || {
+            verify_url((name, url), exclusions_cloned)
+        });
+        threads.push(handle);
     }
     for handle in threads {
         if handle.join().is_err() {
@@ -164,6 +201,7 @@ fn main() {
         }
     }
     for md_file in md_files() {
+        println!("Scanning '{}'", md_file);
         runner(&md_file);
     }
     let code = get_exit_code();
