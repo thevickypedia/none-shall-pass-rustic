@@ -17,7 +17,7 @@ jobs:
         name=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
         echo "Package Name: $name"
         echo "pkg_name=$name" >> $GITHUB_ENV
-        echo "asset_name=asset_${{ env.pkg_name }}" >> $GITHUB_ENV
+        echo "asset_name=asset_$name" >> $GITHUB_ENV
       shell: bash
     - name: Set Release Flag
       # todo: change release flag
