@@ -43,5 +43,5 @@ jobs:
             echo "The file ${{ env.pkg_name }} does not exist in $src_dir."
         fi
         ls -ltrh
-        cd target/release
+        cd target
         ls -ltrh
