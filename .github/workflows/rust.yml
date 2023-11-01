@@ -84,5 +84,5 @@ jobs:
       if: env.release == 'true'
       run: |
         cargo login ${{ secrets.CRATES_TOKEN }}
-        cargo publish
+        cargo publish --allow-dirty  # Set allow-dirty since building will create a /target folder that will be uncommitted in git
       shell: bash
