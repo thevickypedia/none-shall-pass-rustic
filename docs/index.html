@@ -1,0 +1,48 @@
+<h1>none-shall-pass-rustic</h1>
+
+<p>Artifact for <a href="https://github.com/thevickypedia/none-shall-pass">none-shall-pass</a></p>
+
+<h4>Summary</h4>
+
+<ul>
+<li><a href="https://github.com/thevickypedia/none-shall-pass-rustic"><code>none-shall-pass-rustic</code></a> is an application to validate hyperlinks in markdown files.</li>
+</ul>
+
+<h4>Description</h4>
+
+<ul>
+<li>Clones the GitHub wiki pages</li>
+<li>Looks up all the <code>*.md</code> files</li>
+<li>Scans for hyperlinks using regex (<code>inline</code>, <code>footnote</code>, and <code>anchored</code>)</li>
+<li>Sets exit code to 1, if any of the URL fails to resolve (<code>GET</code> request)
+<ul>
+<li>Ignores failure when the URL is a <code>localhost</code></li>
+<li>More exclusions can be via commandline arguments</li>
+</ul></li>
+<li>Takes argument <code>fail</code> to avoid failure</li>
+<li>Takes argument <code>debug</code> to print failure information on screen</li>
+</ul>
+
+<h2>Crate</h2>
+
+<p>https://crates.io/crates/none-shall-pass</p>
+
+<h2>Linting</h2>
+
+<h3>Requirement</h3>
+
+<p><code>shell
+rustup component add clippy
+</code></p>
+
+<h3>Usage</h3>
+
+<p><code>shell
+cargo clippy --fix --allow-dirty
+</code></p>
+
+<h2>License &amp; copyright</h2>
+
+<p>&copy; Vignesh Rao</p>
+
+<p>Licensed under the <a href="https://github.com/thevickypedia/none-shall-pass-rustic/blob/main/LICENSE">MIT License</a></p>

@@ -1,13 +1,12 @@
 # https://doc.rust-lang.org/cargo/getting-started/first-steps.html#first-steps-with-cargo
 [package]
 name = "none-shall-pass"
-version = "0.0.2"
+version = "0.0.3"
 description = "GitHub Action to validate hyperlinks in all markdown files"
 license = "MIT"
-# todo: Update documentation URL
-documentation = "https://thevickypedia.github.io/none-shall-pass"
-homepage = "https://github.com/thevickypedia/none-shall-pass"
-repository = "https://github.com/thevickypedia/none-shall-pass"
+documentation = "https://thevickypedia.github.io/none-shall-pass-rustic"
+homepage = "https://github.com/thevickypedia/none-shall-pass-rustic"
+repository = "https://github.com/thevickypedia/none-shall-pass-rustic"
 
 [dependencies]
 reqwest = { version = "0.11.22", features = ["blocking"] }
