@@ -33,14 +33,20 @@ jobs:
         fi
         echo "pkg_version=$current_version" >> $GITHUB_ENV
       shell: bash
-    - name: Build Release
-      if: env.release == 'true'
-      run: cargo build --release
-    - name: Build Verbose
-      if: env.release == 'false'
-      run: cargo build --verbose
+    - name: Build
+      run: |
+        if [ "${{ env.release }}" == "true" ]; then
+          cargo build --release
+        else
+          cargo build --verbose
+        fi
     - name: Run tests
-      run: cargo test --verbose
+      run: |
+        if [ "${{ env.release }}" == "true" ]; then
+          cargo test
+        else
+          cargo test --verbose
+        fi
     - name: Set commit message
       if: env.release == 'true'
       run: |
