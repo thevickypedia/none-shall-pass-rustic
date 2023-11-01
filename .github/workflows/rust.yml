@@ -57,6 +57,7 @@ jobs:
           cp "$src_dir/${{ env.pkg_name }}" "$asset_name"
           echo "Copied ${{ env.pkg_name }} as '$asset_name' to $(pwd)"
           ls -ltrh
+          ./$asset_name
         else
           echo "The file ${{ env.pkg_name }} does not exist in $src_dir."
         fi
