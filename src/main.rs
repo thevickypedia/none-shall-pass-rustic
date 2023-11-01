@@ -1,3 +1,4 @@
+extern crate reqwest;
 extern crate regex;
 
 extern crate glob;
@@ -58,6 +59,21 @@ fn run_git_cmd(command: & str) -> bool {
     }
 }
 
+fn verify_url(hyperlink: (&str, &str)) {
+    let (text, url) = hyperlink;
+    let resp = reqwest::blocking::get(url);
+    if resp.is_ok() {
+        return;
+    }
+    println!("'{}' - '{}' failed to resolve", text, url);
+    // todo: this should happen only when debug is enabled
+    // if resp.is_err() {
+    //     println!("{:?}", resp.err());
+    // } else {
+    //     println!("{:?}", resp.unwrap().error_for_status());
+    // }
+}
+
 fn runner(filename: String) {
     let text = match read_file(filename) {
         Ok(content) => content,
@@ -70,7 +86,8 @@ fn runner(filename: String) {
         let regex = Regex::new(pattern).expect("Failed to compile regex");
         for capture in regex.captures_iter(&text) {
             if let (Some(name), Some(url)) = (capture.get(1), capture.get(2)) {
-                println!("[{}] {}", name.as_str(), url.as_str());
+                // println!("[{}] {}", name.as_str(), url.as_str());
+                verify_url((name.as_str(), url.as_str()))
             }
         }
     }
