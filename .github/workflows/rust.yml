@@ -67,10 +67,13 @@ jobs:
 
         release_id=$(echo $response | jq -r .id)
         echo "Release ID: $release_id"
-
-        # Upload the asset to the release
+        echo "release_id=$release_id" >> $GITHUB_ENV
+      shell: bash
+    - name: Upload Asset to Release
+      if: env.release == 'true'
+      run: |
         curl -X POST -H "Authorization: token ${{ secrets.GIT_TOKEN }}" \
-          -H "Content-Type: application/octet-stream" \
-          --data-binary @"${{ env.pkg_name }}" \
-          "https://uploads.github.com/repos/${{ github.repository }}/releases/$release_id/assets?name=${{ env.pkg_name }}"
+        -H "Content-Type: application/octet-stream" \
+        --data-binary @"${{ env.pkg_name }}" \
+        "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ env.release_id }}/assets?name=${{ env.pkg_name }}"
       shell: bash
