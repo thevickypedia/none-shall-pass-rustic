@@ -20,7 +20,6 @@ jobs:
         echo "asset_name=asset_$name" >> $GITHUB_ENV
       shell: bash
     - name: Set Release Flag
-      # todo: change release flag
       run: |
         current_version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
         latest_version=$(curl -s https://crates.io/api/v1/crates/${{ env.pkg_name }} | jq -r '.versions[0].num')
@@ -31,7 +30,7 @@ jobs:
           echo "release=true" >> $GITHUB_ENV
         else
           echo "Version has not changed. Setting release flag to false."
-          echo "release=true" >> $GITHUB_ENV
+          echo "release=false" >> $GITHUB_ENV
         fi
         echo "pkg_version=$current_version" >> $GITHUB_ENV
       shell: bash
@@ -55,38 +54,36 @@ jobs:
         src_dir="target/release"
         if [ -f "$src_dir/${{ env.pkg_name }}" ]; then
           cp "$src_dir/${{ env.pkg_name }}" "$asset_name"
-          echo "Copied ${{ env.pkg_name }} as '$asset_name' to $(pwd)"
-          ls -ltrh
-          ./$asset_name
+          echo "Copied '${{ env.pkg_name }}' as '$asset_name' to $(pwd)"
         else
           echo "The file ${{ env.pkg_name }} does not exist in $src_dir."
         fi
       shell: bash
-#    - name: Create New Release
-#      if: env.release == 'true'
-#      run: |
-#        release_tag="v${{ env.pkg_version }}"
-#        commit_msg="Release compiled executable for $release_tag"
-#        release_data="{\"tag_name\":\"$release_tag\",\"name\":\"$release_tag\",\"body\":\"$commit_msg\",\"draft\":false,\"prerelease\":false}"
-#        response=$(curl -X POST -H "Authorization: token ${{ secrets.GIT_TOKEN }}" \
-#          -d "$release_data" \
-#          "https://api.github.com/repos/${{ github.repository }}/releases")
-#
-#        release_id=$(echo $response | jq -r .id)
-#        echo "Release ID: $release_id"
-#        echo "release_id=$release_id" >> $GITHUB_ENV
-#      shell: bash
-#    - name: Upload Asset to Release
-#      if: env.release == 'true'
-#      run: |
-#        curl -X POST -H "Authorization: token ${{ secrets.GIT_TOKEN }}" \
-#        -H "Content-Type: application/octet-stream" \
-#        --data-binary @"$asset_name" \
-#        "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ env.release_id }}/assets?name=$asset_name"
-#      shell: bash
-#    - name: Release Crate
-#      if: env.release == 'true'
-#      run: |
-#        cargo login ${{ secrets.CRATES_TOKEN }}
-#        cargo publish --allow-dirty  # Set allow-dirty since building will create a /target folder that will be uncommitted in git
-#      shell: bash
+    - name: Create New Release
+      if: env.release == 'true'
+      run: |
+        release_tag="v${{ env.pkg_version }}"
+        commit_msg="Release compiled executable for $release_tag"
+        release_data="{\"tag_name\":\"$release_tag\",\"name\":\"$release_tag\",\"body\":\"$commit_msg\",\"draft\":false,\"prerelease\":false}"
+        response=$(curl -X POST -H "Authorization: token ${{ secrets.GIT_TOKEN }}" \
+          -d "$release_data" \
+          "https://api.github.com/repos/${{ github.repository }}/releases")
+
+        release_id=$(echo $response | jq -r .id)
+        echo "Release ID: $release_id"
+        echo "release_id=$release_id" >> $GITHUB_ENV
+      shell: bash
+    - name: Upload Asset to Release
+      if: env.release == 'true'
+      run: |
+        curl -X POST -H "Authorization: token ${{ secrets.GIT_TOKEN }}" \
+        -H "Content-Type: application/octet-stream" \
+        --data-binary @"$asset_name" \
+        "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ env.release_id }}/assets?name=$asset_name"
+      shell: bash
+    - name: Release Crate
+      if: env.release == 'true'
+      run: |
+        cargo login ${{ secrets.CRATES_TOKEN }}
+        cargo publish --allow-dirty  # Set allow-dirty since building will create a /target folder that will be uncommitted in git
+      shell: bash
