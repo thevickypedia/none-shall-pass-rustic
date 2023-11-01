@@ -33,7 +33,11 @@ jobs:
         fi
         echo "pkg_version=$current_version" >> $GITHUB_ENV
       shell: bash
-    - name: Build
+    - name: Build Release
+      if: env.release == 'true'
+      run: cargo build --release
+    - name: Build Verbose
+      if: env.release == 'false'
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
@@ -47,7 +51,7 @@ jobs:
     - name: Copy Compiled Executable
       if: env.release == 'true'
       run: |
-        src_dir="target/debug"
+        src_dir="target/release"
         if [ -f "$src_dir/${{ env.pkg_name }}" ]; then
           cp "$src_dir/${{ env.pkg_name }}" ${{ env.pkg_name }}
           echo "Copied ${{ env.pkg_name }} to $(pwd)"
@@ -76,4 +80,10 @@ jobs:
         -H "Content-Type: application/octet-stream" \
         --data-binary @"${{ env.pkg_name }}" \
         "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ env.release_id }}/assets?name=${{ env.pkg_name }}"
+      shell: bash
+    - name: Release Crate
+      if: env.release == 'true'
+      run: |
+        cargo login ${{ env.CRATES_TOKEN }}
+        cargo publish
       shell: bash

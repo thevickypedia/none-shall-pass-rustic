@@ -93,7 +93,7 @@ fn verify_url(hyperlink: (String, String), exclusions: Vec<String>) {
     println!("'{}' - '{}' failed to resolve", text, url);
     println!("Setting exit code to 1");
     env::set_var("exit_code", "1");
-    if env::var("debug") {
+    if env::var("debug").unwrap().as_str() == "true" {
         if resp.is_err() {
             println!("{:?}", resp.err());
         } else {
