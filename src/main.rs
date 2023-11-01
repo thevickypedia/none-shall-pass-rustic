@@ -1,20 +1,20 @@
 extern crate reqwest;
+extern crate glob;
 extern crate regex;
 
-extern crate glob;
-
-use glob::glob;
 use std::env;
-
 use std::fs::File;
 use std::io;
 use std::io::Read;
-use std::process::Command;
+use std::path::Path;
+use std::process::{Command, exit};
+use std::thread;
 use std::time::Instant;
 
+use glob::glob;
 use regex::Regex;
 
-fn read_file(filename: String) -> Result<String, io::Error> {
+fn read_file(filename: &str) -> Result<String, io::Error> {
     let mut file = File::open(filename)?;
     let mut content = String::new();
     file.read_to_string(&mut content)?;
@@ -45,7 +45,7 @@ fn md_files() -> Vec<String> {
     return md_files;
 }
 
-fn run_git_cmd(command: & str) -> bool {
+fn run_git_cmd(command: &str) -> bool {
     let output = Command::new("sh")  // invoke a shell
         .arg("-c")  // execute command as interpreted by program
         .arg(command)  // run the command
@@ -59,13 +59,16 @@ fn run_git_cmd(command: & str) -> bool {
     }
 }
 
-fn verify_url(hyperlink: (&str, &str)) {
-    let (text, url) = hyperlink;
-    let resp = reqwest::blocking::get(url);
+fn verify_url(hyperlink: (String, String)) {
+    let (text, url) = hyperlink;  // type string which doesn't implement `Copy` trait
+    let resp = reqwest::blocking::get(url.clone());  // since value is moved
     if resp.is_ok() {
         return;
     }
+    // without clone, value will be borrowed after move
     println!("'{}' - '{}' failed to resolve", text, url);
+    println!("Setting exit code to 1");
+    env::set_var("exit_code", "1");
     // todo: this should happen only when debug is enabled
     // if resp.is_err() {
     //     println!("{:?}", resp.err());
@@ -74,35 +77,64 @@ fn verify_url(hyperlink: (&str, &str)) {
     // }
 }
 
-fn runner(filename: String) {
+fn runner(filename: &str) -> bool {
+    let mut fail = false;
     let text = match read_file(filename) {
         Ok(content) => content,
         Err(error) => {
             eprintln!("{}", error);
-            return;
+            return false;  // return instead of setting flag
         }
     };
+    let text = text.to_string();
+    let mut threads = Vec::new();
     for pattern in get_patterns() {
         let regex = Regex::new(pattern).expect("Failed to compile regex");
         for capture in regex.captures_iter(&text) {
             if let (Some(name), Some(url)) = (capture.get(1), capture.get(2)) {
-                // println!("[{}] {}", name.as_str(), url.as_str());
-                verify_url((name.as_str(), url.as_str()))
+                let name = name.as_str().to_string();
+                let url = url.as_str().to_string();
+                let handle = thread::spawn(move || {
+                    verify_url((name, url))
+                });
+                threads.push(handle);
             }
         }
     }
+    for handle in threads {
+        if let Err(_) = handle.join() {
+            fail = true;
+        }
+    }
+    return fail;
 }
 
-pub fn main() {
+fn get_exit_code() -> i32 {
+    let s = env::var("exit_code").unwrap_or("0".to_string());
+    match s.parse::<i32>() {
+        Ok(num) => num,
+        Err(_) => 0,
+    }
+}
+
+fn main() {
     let start = Instant::now();
     let arguments: Vec<String> = env::args().collect();
     let owner = &arguments[1];
     let repo = &arguments[2];
-    let command = format!("git clone https://github.com/{}/{}.wiki.git", owner, repo);
-    run_git_cmd(command.as_str());
+    let wiki_path = format!("{}.wiki", repo);
+    let command = format!("git clone https://github.com/{}/{}.git", owner, wiki_path);
+    if run_git_cmd(command.as_str()) {
+        let path = Path::new(wiki_path.as_str());
+        if !path.exists() {
+            println!("Setting exit code to 1");
+            env::set_var("exit_code", "1");
+        }
+    }
     for md_file in md_files() {
-        runner(md_file)
+        runner(&md_file);
     }
     let elapsed = start.elapsed();
-    println!("{}", elapsed.as_secs())
+    println!("Run time: {}s", elapsed.as_secs());
+    exit(get_exit_code());
 }
