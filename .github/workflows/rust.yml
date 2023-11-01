@@ -18,7 +18,6 @@ jobs:
         echo "Package Name: $name"
         echo "pkg_name=$name" >> $GITHUB_ENV
     - name: Set Release Flag
-      # todo: Set release condition as flag
       run: |
         current_version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
         latest_version=$(curl -s https://crates.io/api/v1/crates/${{ env.pkg_name }} | jq -r '.versions[0].num')
@@ -31,11 +30,13 @@ jobs:
           echo "Version has not changed. Setting release flag to false."
           echo "release=false" >> $GITHUB_ENV
         fi
+        echo "pkg_version=$current_version" >> $GITHUB_ENV
     - name: Build
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
     - name: Copy Compiled Executable
+      if: env.release == 'false'  # todo: set this to true
       run: |
         src_dir="target/debug"
         if [ -f "$src_dir/${{ env.pkg_name }}" ]; then
@@ -44,7 +45,20 @@ jobs:
         else
           echo "The file ${{ env.pkg_name }} does not exist in $src_dir."
         fi
-    - name: Store Executable in GH asset
+    - name: Create Release and Upload Asset
       if: env.release == 'false'  # todo: set this to true
       run: |
-        echo "Figure out how to upload file to GH assets/releases"
+        release_tag="v${{ env.pkg_version }}"
+
+        # Create the release
+        response=$(curl -X POST -H "Authorization: token ${{ secrets.GIT_TOKEN }}" \
+          -d "{\"tag_name\":\"$release_tag\",\"name\":\"$release_tag\"}" \
+          https://api.github.com/repos/${{ github.repository }}/releases)
+
+        release_id=$(echo $response | jq -r .id)
+
+        # Upload the asset to the release
+        curl -X POST -H "Authorization: token ${{ secrets.GIT_TOKEN }}" \
+          -H "Content-Type: application/octet-stream" \
+          --data-binary @"${{ env.pkg_name }}" \
+          "https://uploads.github.com/repos/${{ github.repository }}/releases/$release_id/assets?name=${{ env.pkg_name }}"
