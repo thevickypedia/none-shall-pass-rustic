@@ -36,7 +36,7 @@ fn get_exclusions() -> Vec<String> {
         }
         exclusions.push(server_ip);
     }
-    return exclusions;
+    exclusions
 }
 
 fn get_patterns() -> Vec<&'static str> {
@@ -44,7 +44,7 @@ fn get_patterns() -> Vec<&'static str> {
     let footnote_link_text_re = r"\[([^\]]+)\]\[(\d+)\]";
     let footnote_link_url_re = r"\[(\d+)\]:\s+(\S+)";
     let anchored_link_re = r"\[([^\]]+)\]:\s+(\S+)";
-    return vec![inline_link_re, footnote_link_text_re, footnote_link_url_re, anchored_link_re];
+    vec![inline_link_re, footnote_link_text_re, footnote_link_url_re, anchored_link_re]
 }
 
 fn md_files() -> Vec<String> {
@@ -60,7 +60,7 @@ fn md_files() -> Vec<String> {
             }
         })
         .collect();
-    return md_files;
+    md_files
 }
 
 fn run_git_cmd(command: &str) -> bool {
@@ -70,10 +70,10 @@ fn run_git_cmd(command: &str) -> bool {
         .status()  // check for status
         .expect("Failed to execute command");
     if output.success() {
-        return true;
+        true
     } else {
         println!("ERROR: Command failed with an error code: {:?}", output.code());
-        return false;
+        false
     }
 }
 
@@ -131,19 +131,16 @@ fn runner(filename: &str) -> bool {
         }
     }
     for handle in threads {
-        if let Err(_) = handle.join() {
+        if handle.join().is_err() {
             fail = true;
         }
     }
-    return fail;
+    fail
 }
 
 fn get_exit_code() -> i32 {
-    let s = env::var("exit_code").unwrap_or("0".to_string());
-    match s.parse::<i32>() {
-        Ok(num) => num,
-        Err(_) => 0,
-    }
+    let string = env::var("exit_code").unwrap_or("0".to_string());
+    string.parse::<i32>().unwrap_or(0)
 }
 
 fn main() {
