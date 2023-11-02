@@ -3,6 +3,7 @@ Artifact for [none-shall-pass][3]
 
 #### Summary
 - [`none-shall-pass-rustic`][1] is an application to validate hyperlinks in markdown files.
+- Usage via GitHub actions can be found in [GitHub Marketplace][4]
 
 #### Description
 - Clones the GitHub wiki pages
@@ -36,3 +37,4 @@ Licensed under the [MIT License][2]
 [1]: https://github.com/thevickypedia/none-shall-pass-rustic
 [2]: https://github.com/thevickypedia/none-shall-pass-rustic/blob/main/LICENSE
 [3]: https://github.com/thevickypedia/none-shall-pass
+[4]: https://github.com/marketplace/actions/none-shall-pass

@@ -1,5 +1,7 @@
 use std::process::{Command, Stdio};
 
+use log::warn;
+
 pub fn run(command: &str) -> bool {
     let output = Command::new("sh")  // invoke a shell
         .arg("-c")  // execute command as interpreted by program
@@ -11,7 +13,7 @@ pub fn run(command: &str) -> bool {
     if output.success() {
         true
     } else {
-        println!("WARNING: Command failed with an error code: {:?}", output.code());
+        warn!("WARNING: Command failed with an error code: {:?}", output.code());
         false
     }
 }

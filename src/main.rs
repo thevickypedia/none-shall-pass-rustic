@@ -1,8 +1,10 @@
 extern crate glob;
 extern crate regex;
+extern crate log;
+extern crate env_logger;
 
+use log::{debug, error, info, warn};
 use std::env;
-use std::io::Read;
 use std::path::Path;
 use std::process::exit;
 use std::thread;
@@ -19,7 +21,7 @@ fn runner(filename: &str) -> bool {
     let text = match files::read(filename) {
         Ok(content) => content,
         Err(error) => {
-            eprintln!("{}", error);
+            error!("{}", error);
             return false;  // return instead of setting flag
         }
     };
@@ -54,31 +56,37 @@ fn main() {
     let repo = &arguments[2];
     let fail = &arguments[3];
     let debug = &arguments[4];
-    env::set_var("debug", debug);
-    println!("Fail flag is set to {}", fail);
-    println!("Debug flag is set to {}", debug);
+    if debug == "true" {
+        env::set_var("RUST_LOG", "debug");
+        env_logger::init();
+        debug!("Debug mode is enabled");
+    } else {
+        env::set_var("RUST_LOG", "info");
+        env_logger::init();
+    }
+    info!("Fail flag is set to {}", fail);
     let wiki_path = format!("{}.wiki", repo);
     let command = format!("git clone https://github.com/{}/{}.git", owner, wiki_path);
     if git::run(command.as_str()) {
         let path = Path::new(wiki_path.as_str());
         if !path.exists() {
-            println!("Setting exit code to 1");
+            error!("Setting exit code to 1");
             env::set_var("exit_code", "1");
         }
     }
     for md_file in files::get_markdown() {
-        println!("Scanning '{}'", md_file);
+        info!("Scanning '{}'", md_file);
         runner(&md_file);
     }
     let code = squire::get_exit_code();
-    println!("Exit code: {}", code);
+    info!("Exit code: {}", code);
     let elapsed = start.elapsed();
     println!("'none-shall-pass' protocol completed. Elapsed time: {:?}s", elapsed.as_secs());
     if code == 1 && fail == "true" {
-        println!("Setting exit code to 1");
+        error!("Setting exit code to 1");
         exit(code);
     } else if code == 1 {
-        println!("Setting exit code to 0, although there were errors");
+        warn!("Setting exit code to 0, although there were errors");
     }
     exit(0)
 }
