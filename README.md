@@ -14,6 +14,7 @@ Artifact for [none-shall-pass][3]
   - More exclusions can be via commandline arguments
 - Takes argument `fail` to avoid failure
 - Takes argument `debug` to print failure information on screen
+- Takes argument `excludeHostnames` to exclude URLs to have known failures
 
 ## Crate
 https://crates.io/crates/none-shall-pass
