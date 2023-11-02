@@ -1,14 +1,15 @@
-extern crate glob;
-extern crate regex;
-extern crate log;
 extern crate env_logger;
+extern crate glob;
+extern crate log;
+extern crate regex;
 
-use log::{debug, error, info, warn};
 use std::env;
 use std::path::Path;
 use std::process::exit;
 use std::thread;
 use std::time::Instant;
+
+use log::{error, info, warn};
 
 mod lookup;
 mod connection;
@@ -58,13 +59,11 @@ fn main() {
     let debug = &arguments[4];
     if debug == "true" {
         env::set_var("RUST_LOG", "debug");
-        env_logger::init();
-        debug!("Debug mode is enabled");
     } else {
         env::set_var("RUST_LOG", "info");
-        env_logger::init();
     }
-    info!("Fail flag is set to {}", fail);
+    env_logger::init();
+    info!("fail flag: {}\tdebug flag: {}", fail, debug);
     let wiki_path = format!("{}.wiki", repo);
     let command = format!("git clone https://github.com/{}/{}.git", owner, wiki_path);
     if git::run(command.as_str()) {

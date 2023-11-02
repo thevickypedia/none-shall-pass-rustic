@@ -13,7 +13,7 @@ pub fn run(command: &str) -> bool {
     if output.success() {
         true
     } else {
-        warn!("WARNING: Command failed with an error code: {:?}", output.code());
+        warn!("Command failed with an error code: {:?}", output.code());
         false
     }
 }
