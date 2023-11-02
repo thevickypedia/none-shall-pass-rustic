@@ -2,6 +2,7 @@ extern crate env_logger;
 extern crate glob;
 extern crate log;
 extern crate regex;
+extern crate reqwest;
 
 use std::env;
 use std::path::Path;
@@ -17,7 +18,7 @@ mod git;
 mod files;
 mod squire;
 
-fn runner(filename: &str) -> bool {
+fn runner(filename: &str, exclusions: Vec<String>) -> bool {
     let mut fail = false;
     let text = match files::read(filename) {
         Ok(content) => content,
@@ -28,7 +29,6 @@ fn runner(filename: &str) -> bool {
     };
     let text = text.to_string();
     let mut threads = Vec::new();
-    let exclusions = squire::get_exclusions();
     for hyperlink in lookup::find_md_links(text.as_str()) {
         let (name, url) = hyperlink;
         let name = name.as_str().to_string();
@@ -57,6 +57,7 @@ fn main() {
     let repo = &arguments[2];
     let fail = &arguments[3];
     let debug = &arguments[4];
+    let exclude_hostnames = &arguments[5];
     if debug == "true" {
         env::set_var("RUST_LOG", "debug");
     } else {
@@ -64,6 +65,13 @@ fn main() {
     }
     env_logger::init();
     info!("fail flag: {}\tdebug flag: {}", fail, debug);
+    let mut exclusions = squire::get_exclusions();
+    if !exclude_hostnames.is_empty() {
+        info!("Exclusion list: {}", exclude_hostnames);
+        for exclusion in exclude_hostnames.split(',') {
+            exclusions.push(exclusion.trim().to_string());
+        }
+    }
     let wiki_path = format!("{}.wiki", repo);
     let command = format!("git clone https://github.com/{}/{}.git", owner, wiki_path);
     if git::run(command.as_str()) {
@@ -75,7 +83,7 @@ fn main() {
     }
     for md_file in files::get_markdown() {
         info!("Scanning '{}'", md_file);
-        runner(&md_file);
+        runner(&md_file, exclusions.clone());
     }
     let code = squire::get_exit_code();
     info!("Exit code: {}", code);

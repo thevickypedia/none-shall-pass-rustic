@@ -9,6 +9,7 @@ homepage = "https://github.com/thevickypedia/none-shall-pass-rustic"
 repository = "https://github.com/thevickypedia/none-shall-pass-rustic"
 
 ## For local debug purpose
+## https://httpbin.org/
 #[[bin]]
 #name = "none"
 #path = "src/main.rs"
