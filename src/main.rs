@@ -1,65 +1,22 @@
-mod lookup;
-mod connection;
-mod git;
-
 extern crate glob;
 extern crate regex;
 
 use std::env;
-use std::fs::File;
-use std::io;
 use std::io::Read;
-use std::net::ToSocketAddrs;
 use std::path::Path;
 use std::process::exit;
 use std::thread;
 use std::time::Instant;
 
-use glob::glob;
-
-fn read_file(filename: &str) -> Result<String, io::Error> {
-    let mut file = File::open(filename)?;
-    let mut content = String::new();
-    file.read_to_string(&mut content)?;
-    Ok(content)
-}
-
-fn get_exclusions() -> Vec<String> {
-    let mut exclusions: Vec<String> = vec!["localhost".to_string(), "127.0.0.1".to_string()];
-    let server_details = "localhost:80";
-    let server: Vec<_> = server_details
-        .to_socket_addrs()
-        .expect("Unable to resolve domain")
-        .collect();
-    for slice in server.as_slice() {
-        let server_ip = slice.ip().to_string().clone();
-        if server_ip.starts_with("::") {
-            continue;
-        }
-        exclusions.push(server_ip);
-    }
-    exclusions
-}
-
-fn md_files() -> Vec<String> {
-    let pattern = "**/*.md";
-    let current_dir = env::current_dir().expect("Failed to get current directory");
-    let md_files: Vec<String> = glob(&format!("{}/{}", current_dir.display(), pattern))
-        .expect("Failed to read glob pattern")
-        .filter_map(|entry| {
-            if let Ok(path) = entry {
-                Some(path.to_string_lossy().into_owned())
-            } else {
-                None
-            }
-        })
-        .collect();
-    md_files
-}
+mod lookup;
+mod connection;
+mod git;
+mod files;
+mod squire;
 
 fn runner(filename: &str) -> bool {
     let mut fail = false;
-    let text = match read_file(filename) {
+    let text = match files::read(filename) {
         Ok(content) => content,
         Err(error) => {
             eprintln!("{}", error);
@@ -68,7 +25,7 @@ fn runner(filename: &str) -> bool {
     };
     let text = text.to_string();
     let mut threads = Vec::new();
-    let exclusions = get_exclusions();
+    let exclusions = squire::get_exclusions();
     for hyperlink in lookup::find_md_links(text.as_str()) {
         let (name, url) = hyperlink;
         let name = name.as_str().to_string();
@@ -87,11 +44,6 @@ fn runner(filename: &str) -> bool {
         }
     }
     fail
-}
-
-fn get_exit_code() -> i32 {
-    let string = env::var("exit_code").unwrap_or("0".to_string());
-    string.parse::<i32>().unwrap_or(0)
 }
 
 fn main() {
@@ -114,11 +66,11 @@ fn main() {
             env::set_var("exit_code", "1");
         }
     }
-    for md_file in md_files() {
+    for md_file in files::get_markdown() {
         println!("Scanning '{}'", md_file);
         runner(&md_file);
     }
-    let code = get_exit_code();
+    let code = squire::get_exit_code();
     println!("Exit code: {}", code);
     let elapsed = start.elapsed();
     println!("'none-shall-pass' protocol completed. Elapsed time: {:?}s", elapsed.as_secs());

@@ -1,5 +1,6 @@
-use regex::Regex;
 use std::collections::HashMap;
+
+use regex::Regex;
 
 pub fn find_md_links(markdown: &str) -> Vec<(String, String)> {
     let inline_link_pattern = r"\[([^\]]+)\]\(([^)]+)\)";
