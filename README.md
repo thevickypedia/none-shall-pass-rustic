@@ -24,7 +24,7 @@ rustup component add clippy
 ```
 ### Usage
 ```shell
-cargo clippy --fix --allow-dirty
+cargo clippy --no-deps --fix --allow-dirty
 ```
 
 ## License & copyright

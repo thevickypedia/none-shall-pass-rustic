@@ -8,6 +8,11 @@ documentation = "https://thevickypedia.github.io/none-shall-pass-rustic"
 homepage = "https://github.com/thevickypedia/none-shall-pass-rustic"
 repository = "https://github.com/thevickypedia/none-shall-pass-rustic"
 
+### For local debug purpose
+#[[bin]]
+#name = "none"
+#path = "src/main.rs"
+
 [dependencies]
 reqwest = { version = "0.11.22", features = ["blocking"] }
 regex = "1.10.2"
