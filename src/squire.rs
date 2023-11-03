@@ -1,5 +1,11 @@
 use std::env;
 use std::net::ToSocketAddrs;
+use std::sync::{Arc, Mutex};
+
+pub fn increment_counter(counter: Arc<Mutex<i32>>) {
+    let mut count = counter.lock().unwrap();
+    *count += 1;
+}
 
 pub fn get_exclusions() -> Vec<String> {
     let mut exclusions: Vec<String> = vec!["localhost".to_string(), "127.0.0.1".to_string()];

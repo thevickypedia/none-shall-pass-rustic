@@ -7,6 +7,7 @@ extern crate reqwest;
 use std::env;
 use std::path::Path;
 use std::process::exit;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Instant;
 
@@ -18,13 +19,12 @@ mod git;
 mod files;
 mod squire;
 
-fn runner(filename: &str, exclusions: Vec<String>) -> bool {
-    let mut fail = false;
+fn runner(filename: &str, exclusions: Vec<String>, counter: Arc<Mutex<i32>>) {
     let text = match files::read(filename) {
         Ok(content) => content,
         Err(error) => {
             error!("{}", error);
-            return false;  // return instead of setting flag
+            return;
         }
     };
     let text = text.to_string();
@@ -36,17 +36,17 @@ fn runner(filename: &str, exclusions: Vec<String>) -> bool {
         // Requires explicit variable assignment to avoid 'use occurs due to use in closure'
         // Clone exclusions and pass the clone into the closure
         let exclusions_cloned = exclusions.clone();
+        let counter_cloned = counter.clone();
         let handle = thread::spawn(move || {
-            connection::verify_url((name, url), exclusions_cloned)
+            connection::verify_url((name, url), exclusions_cloned, counter_cloned)
         });
         threads.push(handle);
     }
     for handle in threads {
         if handle.join().is_err() {
-            fail = true;
+            error!("Error awaiting thread")
         }
     }
-    fail
 }
 
 fn main() {
@@ -81,14 +81,18 @@ fn main() {
             env::set_var("exit_code", "1");
         }
     }
+    let mut count = 0;
+    let counter = Arc::new(Mutex::new(0));  // Create a new counter for each thread
     for md_file in files::get_markdown() {
         info!("Scanning '{}'", md_file);
-        runner(&md_file, exclusions.clone());
+        runner(&md_file, exclusions.clone(), counter.clone());
+        count += *counter.lock().unwrap();
     }
     let code = squire::get_exit_code();
     info!("Exit code: {}", code);
     let elapsed = start.elapsed();
-    println!("'none-shall-pass' protocol completed. Elapsed time: {:?}s", elapsed.as_secs());
+    info!("'none-shall-pass' protocol completed. Elapsed time: {:?}s", elapsed.as_secs());
+    info!("Total URLs validated: {}", count);
     if code == 1 && fail == "true" {
         error!("Setting exit code to 1");
         exit(code);

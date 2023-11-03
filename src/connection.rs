@@ -2,12 +2,15 @@ extern crate reqwest;
 
 use std::env;
 use std::error::Error;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use log::{debug, error, warn};
+use squire;
 
-pub fn verify_url(hyperlink: (String, String), exclusions: Vec<String>) {
+pub fn verify_url(hyperlink: (String, String), exclusions: Vec<String>, counter: Arc<Mutex<i32>>) {
     let (text, url) = hyperlink;  // type string which doesn't implement `Copy` trait
+    squire::increment_counter(counter);
     let client = reqwest::blocking::Client::new();
     let request = client.get(url.clone());
     let request_with_timeout = request.timeout(Duration::from_secs(3));
