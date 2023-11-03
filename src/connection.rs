@@ -1,37 +1,47 @@
 extern crate reqwest;
 
-use std::env;
 use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use log::{debug, error, warn};
+use log::{error, warn};
+
 use squire;
 
-pub fn verify_url(hyperlink: (String, String), exclusions: Vec<String>, counter: Arc<Mutex<i32>>) {
+pub fn verify_url(hyperlink: (String, String), exclusions: Vec<String>, counter: Arc<Mutex<i32>>)
+    -> bool {
     let (text, url) = hyperlink;  // type string which doesn't implement `Copy` trait
     squire::increment_counter(counter);
-    let client = reqwest::blocking::Client::new();
-    let request = client.get(url.clone());
-    let request_with_timeout = request.timeout(Duration::from_secs(3));
-    let resp = request_with_timeout.send();
-    if resp.is_ok() {
-        return;
+    let client = reqwest::blocking::ClientBuilder::new();
+    let client = client.connect_timeout(Duration::from_secs(3));
+    // let client = client.min_tls_version(reqwest::tls::Version::TLS_1_2);
+    let request = client.build();
+    let response = request.unwrap().get(&url).send();
+    let error_reason;
+    match response {
+        Ok(ok) => {
+            let status_code = ok.status().as_u16();
+            if status_code < 400 {
+                return true;
+            }
+            error_reason = format!("'{}: {}' resolved but returned '{}'", text, url, ok.status());
+            if status_code == 429 {
+                // too many requests
+                warn!("{}", error_reason);
+                return true;
+            }
+        }
+        Err(err) => {
+            error_reason = format!("'{}: {}' failed to resolve - {:?}",
+                                   text, url, err.source().unwrap().to_string())
+        }
     }
     for exclusion in exclusions {
         if url.contains(&exclusion) {
-            warn!("'{}' failed to resolve but excluded", url);
-            return;
+            warn!("{} but excluded", error_reason);
+            return true;
         }
     }
-    // without clone, value will be borrowed after move
-    error!("'{}' - '{}' failed to resolve", text, url);
-    error!("Setting exit code to 1");
-    env::set_var("exit_code", "1");
-    if resp.is_err() {
-        debug!("Status: {}", resp.err().unwrap().source().unwrap().to_string());
-        // debug!("{:?}", resp.err());
-    } else {
-        debug!("{:?}", resp.unwrap().error_for_status());
-    }
+    error!("{}", error_reason);
+    return false;
 }

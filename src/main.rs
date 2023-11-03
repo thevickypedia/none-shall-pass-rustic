@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Instant;
 
-use log::{error, info, warn};
+use log::{error, info};
 
 mod lookup;
 mod connection;
@@ -31,14 +31,19 @@ fn runner(filename: &str, exclusions: Vec<String>, counter: Arc<Mutex<i32>>) {
     let mut threads = Vec::new();
     for hyperlink in lookup::find_md_links(text.as_str()) {
         let (name, url) = hyperlink;
-        let name = name.as_str().to_string();
-        let url = url.as_str().to_string();
         // Requires explicit variable assignment to avoid 'use occurs due to use in closure'
         // Clone exclusions and pass the clone into the closure
         let exclusions_cloned = exclusions.clone();
         let counter_cloned = counter.clone();
         let handle = thread::spawn(move || {
-            connection::verify_url((name, url), exclusions_cloned, counter_cloned)
+            let fail_flag = connection::verify_url((name, url),
+                                                   exclusions_cloned,
+                                                   counter_cloned);
+            if fail_flag == true {
+                if env::var("exit_code").unwrap_or("0".to_string()) != "1" {
+                    env::set_var("exit_code", "1");
+                }
+            }
         });
         threads.push(handle);
     }
@@ -88,16 +93,8 @@ fn main() {
         runner(&md_file, exclusions.clone(), counter.clone());
         count += *counter.lock().unwrap();
     }
-    let code = squire::get_exit_code();
-    info!("Exit code: {}", code);
     let elapsed = start.elapsed();
     info!("'none-shall-pass' protocol completed. Elapsed time: {:?}s", elapsed.as_secs());
     info!("Total URLs validated: {}", count);
-    if code == 1 && fail == "true" {
-        error!("Setting exit code to 1");
-        exit(code);
-    } else if code == 1 {
-        warn!("Setting exit code to 0, although there were errors");
-    }
-    exit(0)
+    exit(squire::get_exit_code());
 }
