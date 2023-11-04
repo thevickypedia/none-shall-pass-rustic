@@ -37,18 +37,18 @@ fn runner(filename: &str, exclusions: Vec<String>, counter: Arc<Mutex<HashMap<St
         let exclusions_cloned = exclusions.clone();
         let counter_cloned = counter.clone();
         let handle = thread::spawn(move || {
-            let fail_flag = connection::verify_url((name, url), exclusions_cloned);
-            if fail_flag {
+            let success_flag = connection::verify_url((name, url), exclusions_cloned);
+            if success_flag {
                 let mut success_count = counter_cloned.lock().unwrap();
                 let success_counter = success_count.entry("success".to_string()).or_insert(Arc::new(Mutex::new(0)));
                 *success_counter.lock().unwrap() += 1;
-                if env::var("exit_code").unwrap_or("0".to_string()) != "1" {
-                    env::set_var("exit_code", "1");
-                }
             } else {
                 let mut failed_count = counter_cloned.lock().unwrap();
                 let failed_counter = failed_count.entry("failed".to_string()).or_insert(Arc::new(Mutex::new(0)));
                 *failed_counter.lock().unwrap() += 1;
+                if env::var("exit_code").unwrap_or("0".to_string()) != "1" {
+                    env::set_var("exit_code", "1");
+                }
             }
         });
         threads.push(handle);
