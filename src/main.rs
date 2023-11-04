@@ -97,18 +97,7 @@ fn main() {
         info!("Scanning '{}'", md_file);
         runner(&md_file, exclusions.clone(), counter.clone());
     }
-    let counter_lock = counter.lock().unwrap();
-    let mut success_count = 0;
-    let mut failed_count = 0;
-    if counter_lock.get("success").is_some() {
-        success_count = *counter_lock.get("success").unwrap().lock().unwrap();
-    }
-    if counter_lock.get("failed").is_some() {
-        failed_count = *counter_lock.get("failed").unwrap().lock().unwrap();
-    }
-    info!("URLs successfully validated: {}", success_count);
-    info!("URLs failed to validate: {}", failed_count);
-    info!("Total URLs validated: {}", success_count + failed_count);
+    squire::unwrap(counter);
     let elapsed = start.elapsed();
     info!("'none-shall-pass' protocol completed. Elapsed time: {:?}s", elapsed.as_secs());
     exit(squire::get_exit_code());

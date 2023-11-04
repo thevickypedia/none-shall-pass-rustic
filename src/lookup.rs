@@ -43,7 +43,7 @@ pub fn find_md_links(markdown: &str) -> Vec<(String, String)> {
 
     for (key, value) in footnote_links.iter() {
         if let Some(url) = footnote_urls.get(key) {
-            links.push((value.clone(), url.clone()));
+            links.push((value.to_string(), url.to_string()));
         }
     }
 
