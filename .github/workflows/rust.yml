@@ -63,8 +63,16 @@ jobs:
       if: env.release == 'true'
       run: |
         release_tag="v${{ env.pkg_version }}"
+        cargo_prerelease=("alpha" "beta" "rc")
+        prerelease=false
+        for cargo_pre in "${cargo_prerelease[@]}"; do
+          if [[ $pkg_version == *"$cargo_pre"* ]]; then
+            prerelease=true
+            break
+          fi
+        done
         commit_msg="Release compiled executable for $release_tag"
-        release_data="{\"tag_name\":\"$release_tag\",\"name\":\"$release_tag\",\"body\":\"$commit_msg\",\"draft\":false,\"prerelease\":false}"
+        release_data="{\"tag_name\":\"$release_tag\",\"name\":\"$release_tag\",\"body\":\"$commit_msg\",\"draft\":false,\"prerelease\":$prerelease}"
         response=$(curl -X POST -H "Authorization: token ${{ secrets.GIT_TOKEN }}" \
           -d "$release_data" \
           "https://api.github.com/repos/${{ github.repository }}/releases")
