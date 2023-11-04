@@ -88,7 +88,7 @@ fn main() {
     if git::run(command.as_str()) {
         let path = Path::new(wiki_path.as_str());
         if !path.exists() {
-            error!("Setting exit code to 1");
+            error!("Clone ran successfully but wiki path wasn't found");
             env::set_var("exit_code", "1");
         }
     }
@@ -97,13 +97,19 @@ fn main() {
         info!("Scanning '{}'", md_file);
         runner(&md_file, exclusions.clone(), counter.clone());
     }
+    let counter_lock = counter.lock().unwrap();
+    let mut success_count = 0;
+    let mut failed_count = 0;
+    if counter_lock.get("success").is_some() {
+        success_count = *counter_lock.get("success").unwrap().lock().unwrap();
+    }
+    if counter_lock.get("failed").is_some() {
+        failed_count = *counter_lock.get("failed").unwrap().lock().unwrap();
+    }
+    info!("URLs successfully validated: {}", success_count);
+    info!("URLs failed to validate: {}", failed_count);
+    info!("Total URLs validated: {}", success_count + failed_count);
     let elapsed = start.elapsed();
     info!("'none-shall-pass' protocol completed. Elapsed time: {:?}s", elapsed.as_secs());
-    let counter_lock = counter.lock().unwrap();
-    let success_count = counter_lock.get("success").unwrap_or(&Arc::new(Mutex::new(0))).lock().unwrap();
-    let failed_count = counter_lock.get("failed").unwrap_or(&Arc::new(Mutex::new(0))).lock().unwrap();
-    info!("URLs successfully validated: {}", *success_count);
-    info!("URLs failed to validate: {}", *failed_count);
-    info!("Total URLs validated: {}", *success_count + *failed_count);
     exit(squire::get_exit_code());
 }
