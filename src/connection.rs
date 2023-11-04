@@ -1,17 +1,13 @@
 extern crate reqwest;
 
 use std::error::Error;
-use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use log::{error, warn};
 
-use squire;
-
-pub fn verify_url(hyperlink: (String, String), exclusions: Vec<String>, counter: Arc<Mutex<i32>>)
-    -> bool {
+pub fn verify_url(hyperlink: (String, String), exclusions: Vec<String>)
+                  -> bool {
     let (text, url) = hyperlink;  // type string which doesn't implement `Copy` trait
-    squire::increment_counter(counter);
     let client = reqwest::blocking::ClientBuilder::new();
     let client = client.connect_timeout(Duration::from_secs(3));
     // let client = client.min_tls_version(reqwest::tls::Version::TLS_1_2);

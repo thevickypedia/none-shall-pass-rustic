@@ -4,6 +4,7 @@ extern crate log;
 extern crate regex;
 extern crate reqwest;
 
+use std::collections::HashMap;
 use std::env;
 use std::path::Path;
 use std::process::exit;
@@ -19,7 +20,7 @@ mod git;
 mod files;
 mod squire;
 
-fn runner(filename: &str, exclusions: Vec<String>, counter: Arc<Mutex<i32>>) {
+fn runner(filename: &str, exclusions: Vec<String>, counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>>) {
     let text = match files::read(filename) {
         Ok(content) => content,
         Err(error) => {
@@ -36,13 +37,18 @@ fn runner(filename: &str, exclusions: Vec<String>, counter: Arc<Mutex<i32>>) {
         let exclusions_cloned = exclusions.clone();
         let counter_cloned = counter.clone();
         let handle = thread::spawn(move || {
-            let fail_flag = connection::verify_url((name, url),
-                                                   exclusions_cloned,
-                                                   counter_cloned);
+            let fail_flag = connection::verify_url((name, url), exclusions_cloned);
             if fail_flag == true {
+                let mut success_count = counter_cloned.lock().unwrap();
+                let success_counter = success_count.entry("success".to_string()).or_insert(Arc::new(Mutex::new(0)));
+                *success_counter.lock().unwrap() += 1;
                 if env::var("exit_code").unwrap_or("0".to_string()) != "1" {
                     env::set_var("exit_code", "1");
                 }
+            } else {
+                let mut failed_count = counter_cloned.lock().unwrap();
+                let failed_counter = failed_count.entry("failed".to_string()).or_insert(Arc::new(Mutex::new(0)));
+                *failed_counter.lock().unwrap() += 1;
             }
         });
         threads.push(handle);
@@ -86,15 +92,18 @@ fn main() {
             env::set_var("exit_code", "1");
         }
     }
-    let mut count = 0;
-    let counter = Arc::new(Mutex::new(0));  // Create a new counter for each thread
+    let counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>> = Arc::new(Mutex::new(HashMap::new()));
     for md_file in files::get_markdown() {
         info!("Scanning '{}'", md_file);
         runner(&md_file, exclusions.clone(), counter.clone());
-        count += *counter.lock().unwrap();
     }
     let elapsed = start.elapsed();
     info!("'none-shall-pass' protocol completed. Elapsed time: {:?}s", elapsed.as_secs());
-    info!("Total URLs validated: {}", count);
+    let counter_lock = counter.lock().unwrap();
+    let success_count = counter_lock.get("success").unwrap().lock().unwrap();
+    let failed_count = counter_lock.get("failed").unwrap().lock().unwrap();
+    info!("URLs successfully validated: {}", *success_count);
+    info!("URLs failed to validate: {}", *failed_count);
+    info!("Total URLs validated: {}", *success_count + *failed_count);
     exit(squire::get_exit_code());
 }
