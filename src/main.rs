@@ -100,8 +100,8 @@ fn main() {
     let elapsed = start.elapsed();
     info!("'none-shall-pass' protocol completed. Elapsed time: {:?}s", elapsed.as_secs());
     let counter_lock = counter.lock().unwrap();
-    let success_count = counter_lock.get("success").unwrap().lock().unwrap();
-    let failed_count = counter_lock.get("failed").unwrap().lock().unwrap();
+    let success_count = counter_lock.get("success").unwrap_or(&Arc::new(Mutex::new(0))).lock().unwrap();
+    let failed_count = counter_lock.get("failed").unwrap_or(&Arc::new(Mutex::new(0))).lock().unwrap();
     info!("URLs successfully validated: {}", *success_count);
     info!("URLs failed to validate: {}", *failed_count);
     info!("Total URLs validated: {}", *success_count + *failed_count);
