@@ -38,7 +38,7 @@ fn runner(filename: &str, exclusions: Vec<String>, counter: Arc<Mutex<HashMap<St
         let counter_cloned = counter.clone();
         let handle = thread::spawn(move || {
             let fail_flag = connection::verify_url((name, url), exclusions_cloned);
-            if fail_flag == true {
+            if fail_flag {
                 let mut success_count = counter_cloned.lock().unwrap();
                 let success_counter = success_count.entry("success".to_string()).or_insert(Arc::new(Mutex::new(0)));
                 *success_counter.lock().unwrap() += 1;

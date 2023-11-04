@@ -39,5 +39,5 @@ pub fn verify_url(hyperlink: (String, String), exclusions: Vec<String>)
         }
     }
     error!("{}", error_reason);
-    return false;
+    false
 }
