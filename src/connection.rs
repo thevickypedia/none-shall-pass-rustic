@@ -3,7 +3,7 @@ extern crate reqwest;
 use std::error::Error;
 use std::time::Duration;
 
-use log::{error, warn};
+use log::{debug, error, warn};
 
 pub fn verify_url(hyperlink: (String, String), exclusions: Vec<String>) -> bool {
     let (text, url) = hyperlink;  // type string which doesn't implement `Copy` trait
@@ -17,6 +17,7 @@ pub fn verify_url(hyperlink: (String, String), exclusions: Vec<String>) -> bool 
         Ok(ok) => {
             let status_code = ok.status().as_u16();
             if status_code < 400 {
+                debug!("'{}: {}' - {}", text, url, ok.status());
                 return true;
             }
             error_reason = format!("'{}: {}' resolved but returned '{}'", text, url, ok.status());

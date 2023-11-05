@@ -1,6 +1,6 @@
 use std::process::{Command, Stdio};
 
-use log::warn;
+use log::{debug, warn};
 
 pub fn run(command: &str) -> bool {
     let output = Command::new("sh")  // invoke a shell
@@ -11,6 +11,7 @@ pub fn run(command: &str) -> bool {
         .status()  // check for status
         .expect("Failed to execute command");
     if output.success() {
+        debug!("GitHub wiki cloned successfully");
         true
     } else {
         warn!("Command failed with an error code: {:?}", output.code());

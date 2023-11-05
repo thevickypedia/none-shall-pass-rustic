@@ -1,10 +1,10 @@
 # https://doc.rust-lang.org/cargo/getting-started/first-steps.html#first-steps-with-cargo
 [package]
 name = "none-shall-pass"
-version = "0.1.2"
+version = "0.1.3"
 description = "Artifact for GitHub Action to validate hyperlinks in all markdown files"
 license = "MIT"
-documentation = "https://thevickypedia.github.io/none-shall-pass-rustic"
+documentation = "https://thevickypedia.github.io/none-shall-pass"
 homepage = "https://github.com/thevickypedia/none-shall-pass-rustic"
 repository = "https://github.com/thevickypedia/none-shall-pass-rustic"
 

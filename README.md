@@ -3,10 +3,10 @@ Artifact for [none-shall-pass][3]
 
 #### Summary
 - [`none-shall-pass-rustic`][1] is an application written in Rust.
-- This application validates hyperlinks in markdown files.
-- It accepts inputs provided as command-line arguments.
-- The application extracts hyperlinks from Markdown content, validates them concurrently using multithreading, and logs the validation results.
-- It can differentiate between local Markdown files and Wiki pages within the repository, expanding its validation scope.
+- Validates hyperlinks in markdown files.
+- Accepts inputs provided as command-line arguments.
+- Extracts hyperlinks from Markdown content, validates them concurrently using multithreading, and logs the validation results.
+- Differentiates between local Markdown files and Wiki pages within the repository, expanding its validation scope.
 - Usage via GitHub actions can be found in [GitHub Marketplace][4]
 
 #### Description
@@ -15,10 +15,10 @@ Artifact for [none-shall-pass][3]
 - Scans for hyperlinks using regex (`inline`, `footnote`, and `anchored`)
 - Sets exit code to 1, if any of the URL fails to resolve (`GET` request)
   - Ignores failure when the URL is a `localhost`
-  - More exclusions can be via commandline arguments
-- Takes argument `fail` to avoid failure
-- Takes argument `debug` to print failure information on screen
-- Takes argument `excludeHostnames` to exclude URLs to have known failures
+  - More exclusions can be added via commandline argument
+- Takes argument `fail` _(as boolean)_ to avoid failure
+- Takes argument `debug` _(as boolean)_ to enable debug level logging
+- Takes argument `excludeHostnames` _(as comma separated list)_ to exclude URLs to have known failures
 
 ## Crate
 https://crates.io/crates/none-shall-pass

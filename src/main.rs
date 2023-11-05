@@ -90,7 +90,7 @@ fn main() {
     if git::run(command.as_str()) {
         let path = Path::new(wiki_path.as_str());
         if !path.exists() {
-            error!("Clone ran successfully but wiki path wasn't found");
+            error!("Cloning was successful but wiki path wasn't found");
             env::set_var("exit_code", "1");
         }
     }
