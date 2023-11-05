@@ -10,11 +10,12 @@ pub fn unwrap(counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>>) {
     let mut success_count = 0;  // Set default value for success
     let failed = counter_lock.get("failed");  // Extract failed values
     let mut failed_count = 0;  // Set default value for failed
-    if success.is_some() {
-        success_count = *success.unwrap().lock().unwrap();
+    // Ref: https://rust-lang.github.io/rust-clippy/master/index.html#/unnecessary_unwrap
+    if let Some(success_ref) = success {
+        success_count = *success_ref.lock().unwrap();
     }
-    if failed.is_some() {
-        failed_count = *failed.unwrap().lock().unwrap();
+    if let Some(failed_ref) = failed {
+        failed_count = *failed_ref.lock().unwrap();
     }
     info!("URLs successfully validated: {}", success_count);
     info!("URLs failed to validate: {}", failed_count);
