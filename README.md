@@ -2,7 +2,11 @@
 Artifact for [none-shall-pass][3]
 
 #### Summary
-- [`none-shall-pass-rustic`][1] is an application to validate hyperlinks in markdown files.
+- [`none-shall-pass-rustic`][1] is an application written in Rust.
+- This application validates hyperlinks in markdown files.
+- It accepts inputs provided as command-line arguments.
+- The application extracts hyperlinks from Markdown content, validates them concurrently using multithreading, and logs the validation results.
+- It can differentiate between local Markdown files and Wiki pages within the repository, expanding its validation scope.
 - Usage via GitHub actions can be found in [GitHub Marketplace][4]
 
 #### Description
