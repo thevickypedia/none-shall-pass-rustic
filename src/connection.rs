@@ -5,10 +5,9 @@ use std::time::Duration;
 
 use log::{error, warn};
 
-pub fn verify_url(hyperlink: (String, String), exclusions: Vec<String>)
-                  -> bool {
+pub fn verify_url(hyperlink: (String, String), exclusions: Vec<String>) -> bool {
     let (text, url) = hyperlink;  // type string which doesn't implement `Copy` trait
-    let client = reqwest::blocking::ClientBuilder::new();
+    let client = reqwest::blocking::ClientBuilder::new().user_agent("rustc");
     let client = client.connect_timeout(Duration::from_secs(3));
     // let client = client.min_tls_version(reqwest::tls::Version::TLS_1_2);
     let request = client.build();

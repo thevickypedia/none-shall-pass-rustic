@@ -20,7 +20,9 @@ mod git;
 mod files;
 mod squire;
 
-fn runner(filename: &str, exclusions: Vec<String>, counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>>) {
+fn runner(filename: &str,
+          exclusions: Vec<String>,
+          counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>>) {
     let text = match files::read(filename) {
         Ok(content) => content,
         Err(error) => {
