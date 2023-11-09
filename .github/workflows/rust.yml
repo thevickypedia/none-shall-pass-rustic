@@ -1,4 +1,4 @@
-name: Build, test and store compiled exec as GH asset
+name: Build, test, upload artifact and release crate
 
 on:
   push:
