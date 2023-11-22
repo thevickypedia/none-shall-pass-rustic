@@ -35,6 +35,7 @@ fn runner(filename: &str,
     let mut threads = Vec::new();
     for hyperlink in lookup::find_md_links(text.as_str()) {
         urls += 1;
+        let hyperlink_clone = hyperlink.clone();
         let (name, url) = hyperlink;
         let exclusions_cloned = exclusions.clone();
         let counter_cloned = counter.clone();
@@ -53,11 +54,11 @@ fn runner(filename: &str,
                 }
             }
         });
-        threads.push(handle);
+        threads.push((hyperlink_clone, handle));
     }
-    for handle in threads {
+    for (url_info, handle) in threads {
         if handle.join().is_err() {
-            error!("Error awaiting thread")
+            error!("Error awaiting thread: {:?}", url_info)
         }
     }
     urls
@@ -98,17 +99,18 @@ fn main() {
     let counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>> = Arc::new(Mutex::new(HashMap::new()));
     let mut threads = Vec::new();
     for md_file in files::get_markdown() {
+        let md_file_cloned = md_file.clone();  // clone due to use in closure
         let exclusions_cloned = exclusions.clone();
         let counter_cloned = counter.clone();
         let handle = thread::spawn(move || {
-            let count = runner(&md_file, exclusions_cloned, counter_cloned);
-            info!("Scanned '{}' with {} URLs", md_file.split("/").last().unwrap(), count);
+            let count = runner(&md_file_cloned, exclusions_cloned, counter_cloned);
+            info!("Scanned '{}' with {} URLs", md_file_cloned.split('/').last().unwrap().to_string(), count);
         });
-        threads.push(handle);
+        threads.push((md_file, handle));
     }
-    for handle in threads {
+    for (file, handle) in threads {
         if handle.join().is_err() {
-            error!("Error awaiting thread")
+            error!("Error awaiting thread: {}", file)
         }
     }
     squire::unwrap(counter);
