@@ -21,8 +21,8 @@ pub fn verify_url(hyperlink: (String, String), exclusions: Vec<String>) -> bool 
                 return true;
             }
             error_reason = format!("'{}: {}' resolved but returned '{}'", text, url, ok.status());
-            if status_code == 429 {
-                // too many requests
+            if status_code == 429 || status_code == 403 {
+                // too many requests or forbidden
                 warn!("{}", error_reason);
                 return true;
             }

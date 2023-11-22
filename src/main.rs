@@ -22,17 +22,19 @@ mod squire;
 
 fn runner(filename: &str,
           exclusions: Vec<String>,
-          counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>>) {
+          counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>>) -> i32 {
+    let mut urls = 0;
     let text = match files::read(filename) {
         Ok(content) => content,
         Err(error) => {
             error!("{}", error);
-            return;
+            return urls;
         }
     };
     let text = text.to_string();
     let mut threads = Vec::new();
     for hyperlink in lookup::find_md_links(text.as_str()) {
+        urls += 1;
         let (name, url) = hyperlink;
         // Requires explicit variable assignment to avoid 'use occurs due to use in closure'
         // Clone exclusions and pass the clone into the closure
@@ -60,6 +62,7 @@ fn runner(filename: &str,
             error!("Error awaiting thread")
         }
     }
+    urls
 }
 
 fn main() {
@@ -96,8 +99,8 @@ fn main() {
     }
     let counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>> = Arc::new(Mutex::new(HashMap::new()));
     for md_file in files::get_markdown() {
-        info!("Scanning '{}'", md_file);
-        runner(&md_file, exclusions.clone(), counter.clone());
+        let count = runner(&md_file, exclusions.clone(), counter.clone());
+        info!("Scanned '{}' with {} URLs", md_file.split("/").last().unwrap(), count);
     }
     squire::unwrap(counter);
     let elapsed = start.elapsed();
