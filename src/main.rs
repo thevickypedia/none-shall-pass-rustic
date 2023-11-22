@@ -36,8 +36,6 @@ fn runner(filename: &str,
     for hyperlink in lookup::find_md_links(text.as_str()) {
         urls += 1;
         let (name, url) = hyperlink;
-        // Requires explicit variable assignment to avoid 'use occurs due to use in closure'
-        // Clone exclusions and pass the clone into the closure
         let exclusions_cloned = exclusions.clone();
         let counter_cloned = counter.clone();
         let handle = thread::spawn(move || {
@@ -98,9 +96,20 @@ fn main() {
         }
     }
     let counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>> = Arc::new(Mutex::new(HashMap::new()));
+    let mut threads = Vec::new();
     for md_file in files::get_markdown() {
-        let count = runner(&md_file, exclusions.clone(), counter.clone());
-        info!("Scanned '{}' with {} URLs", md_file.split("/").last().unwrap(), count);
+        let exclusions_cloned = exclusions.clone();
+        let counter_cloned = counter.clone();
+        let handle = thread::spawn(move || {
+            let count = runner(&md_file, exclusions_cloned, counter_cloned);
+            info!("Scanned '{}' with {} URLs", md_file.split("/").last().unwrap(), count);
+        });
+        threads.push(handle);
+    }
+    for handle in threads {
+        if handle.join().is_err() {
+            error!("Error awaiting thread")
+        }
     }
     squire::unwrap(counter);
     let elapsed = start.elapsed();
