@@ -28,13 +28,10 @@ pub fn arguments() -> Args {
     let mut i = 1; // Start from the second argument (args[0] is the program name).
     while i < args.len() {
         match args[i].as_str() {
-            "debug" => {
-                debug = true;
-            }
             "-h" | "--help" => {
                 let helper = "Takes the arguments, debug, \
                 --owner, --repo, --exclude, and --version/-v\n\n\
-        debug: Optional flag to enable debug level logging.\n\
+        --debug: Optional boolean value to enable debug level logging.\n\
         --owner: The account owner of the repository. The name is not case sensitive.\n\
         --repo: The name of the repository without the .git extension. The name is not case sensitive.\n\
         --exclude: Optional list of hostnames (whitespace separated) to be excluded.\n"
@@ -69,6 +66,19 @@ pub fn arguments() -> Args {
                     exclude_me = args[i].clone();
                 } else {
                     println!("\n--exclude\n\tInput requires a value [type=missing]\n");
+                    exit(1)
+                }
+            }
+            "--debug" => {
+                i += 1; // Move to the next argument.
+                if i < args.len() {
+                    debug = match args[i].clone().as_str() {
+                        "true" => true,  // true as true
+                        "1" => true,  // 1 as true
+                        _ => false  //  anything else? set debug to false
+                    }
+                } else {
+                    println!("\n--debug\n\tInput requires a value [type=missing]\n");
                     exit(1)
                 }
             }
