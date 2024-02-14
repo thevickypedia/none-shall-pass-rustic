@@ -21,7 +21,6 @@ Artifact for [none-shall-pass][3]
 - Sets exit code to 1, if any of the URL fails to resolve (`GET` request)
   - Ignores failure when the URL is a `localhost`
   - More exclusions can be added via commandline argument
-- Takes argument `fail` _(as boolean)_ to avoid failure
 - Takes argument `debug` _(as boolean)_ to enable debug level logging
 - Takes argument `excludeHostnames` _(as comma separated list)_ to exclude URLs to have known failures
 
