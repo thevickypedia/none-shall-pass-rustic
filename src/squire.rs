@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::env;
-use std::net::ToSocketAddrs;
 use std::sync::{Arc, Mutex};
-use log::info;
 
 pub fn unwrap(counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>>) {
     let counter_lock = counter.lock().unwrap();  // Lock counter to stop updating
@@ -17,26 +15,9 @@ pub fn unwrap(counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>>) {
     if let Some(failed_ref) = failed {
         failed_count = *failed_ref.lock().unwrap();
     }
-    info!("URLs successfully validated: {}", success_count);
-    info!("URLs failed to validate: {}", failed_count);
-    info!("Total URLs validated: {}", success_count + failed_count);
-}
-
-pub fn get_exclusions() -> Vec<String> {
-    let mut exclusions: Vec<String> = vec!["localhost".to_string(), "127.0.0.1".to_string()];
-    let server_details = "localhost:80";
-    let server: Vec<_> = server_details
-        .to_socket_addrs()
-        .expect("Unable to resolve domain")
-        .collect();
-    for slice in server.as_slice() {
-        let server_ip = slice.ip().to_string();
-        if server_ip.starts_with("::") {
-            continue;
-        }
-        exclusions.push(server_ip);
-    }
-    exclusions
+    log::info!("URLs successfully validated: {}", success_count);
+    log::info!("URLs failed to validate: {}", failed_count);
+    log::info!("Total URLs validated: {}", success_count + failed_count);
 }
 
 pub fn get_exit_code() -> i32 {

@@ -19,7 +19,7 @@ pub fn get_markdown() -> Vec<String> {
         .expect("Failed to read glob pattern")
         .filter_map(|entry| {
             if let Ok(path) = entry {
-                Some(path.to_string_lossy().into_owned())
+                Some(path.to_string_lossy().to_string())
             } else {
                 None
             }

@@ -3,27 +3,25 @@ extern crate reqwest;
 use std::error::Error;
 use std::time::Duration;
 
-use log::{debug, error, warn};
-
-pub fn verify_url(hyperlink: (String, String), exclusions: Vec<String>) -> bool {
-    let (text, url) = hyperlink;  // type string which doesn't implement `Copy` trait
+pub fn verify_url(hyperlink: &(String, String), exclusions: Vec<String>) -> bool {
+    let (text, url) = hyperlink;
     let client = reqwest::blocking::ClientBuilder::new().user_agent("rustc");
     let client = client.connect_timeout(Duration::from_secs(3));
     // let client = client.min_tls_version(reqwest::tls::Version::TLS_1_2);
     let request = client.build();
-    let response = request.unwrap().get(&url).send();
+    let response = request.unwrap().get(url).send();
     let error_reason;
     match response {
         Ok(ok) => {
             let status_code = ok.status().as_u16();
             if status_code < 400 {
-                debug!("'{}: {}' - {}", text, url, ok.status());
+                log::debug!("'{}: {}' - {}", text, url, ok.status());
                 return true;
             }
             error_reason = format!("'{}: {}' resolved but returned '{}'", text, url, ok.status());
             if status_code == 429 || status_code == 403 {
                 // too many requests or forbidden
-                warn!("{}", error_reason);
+                log::warn!("{}", error_reason);
                 return true;
             }
         }
@@ -34,10 +32,10 @@ pub fn verify_url(hyperlink: (String, String), exclusions: Vec<String>) -> bool 
     }
     for exclusion in exclusions {
         if url.contains(&exclusion) {
-            warn!("{} but excluded", error_reason);
+            log::warn!("{} but excluded", error_reason);
             return true;
         }
     }
-    error!("{}", error_reason);
+    log::error!("{}", error_reason);
     false
 }
