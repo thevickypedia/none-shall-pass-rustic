@@ -3,7 +3,7 @@ extern crate reqwest;
 use std::error::Error;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
-use lookup::Hyperlink;
+use crate::lookup::Hyperlink;
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Response {
