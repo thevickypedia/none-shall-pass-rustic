@@ -45,5 +45,5 @@ pub fn verify_url(hyperlink: &Hyperlink, exclusions: Vec<String>, request: Clien
         }
     }
     log::error!("{}", error_reason);
-    return Response { ok: false, response: error_reason };
+    Response { ok: false, response: error_reason }
 }

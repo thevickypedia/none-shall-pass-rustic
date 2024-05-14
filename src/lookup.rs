@@ -8,7 +8,7 @@ pub struct Hyperlink {
     pub url: String,
 }
 
-pub fn find_md_links(markdown: &String) -> Vec<Hyperlink> {
+pub fn find_md_links(markdown: &str) -> Vec<Hyperlink> {
     let inline_link_pattern = r"\[([^\]]+)\]\(([^)]+)\)";
     let anchored_link_pattern = r"\[([^\]]+)\]:\s+(\S+)";
     let footnote_link_text_pattern = r"\[([^\]]+)\]\[(\d+)\]";

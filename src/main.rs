@@ -145,11 +145,9 @@ fn main() {
     let wiki_path = Path::new(&wiki);
     log::debug!("Cloning {}", &wiki);
     let command = format!("git clone https://github.com/{}/{}.git", config.owner, wiki);
-    if git::run(command.as_str()) {
-        if !wiki_path.exists() {
-            log::error!("Cloning was successful but wiki path wasn't found");
-            env::set_var("exit_code", "1");
-        }
+    if git::run(command.as_str()) && !wiki_path.exists() {
+        log::error!("Cloning was successful but wiki path wasn't found");
+        env::set_var("exit_code", "1");
     }
     let client = request_builder();
     let errors = Arc::new(Mutex::new(Vec::new()));
@@ -185,7 +183,7 @@ fn main() {
     }
     if wiki_path.exists() {
         match remove_dir_all(wiki_path) {
-            Ok(_) => log::info!("Removed {}", wiki_path),
+            Ok(_) => log::info!("Removed {:?}", &wiki_path),
             Err(err) => log::error!("Failed to delete: {}", err)
         }
     }
