@@ -1,15 +1,21 @@
 extern crate env_logger;
 extern crate glob;
+extern crate log;
 extern crate regex;
 extern crate reqwest;
+extern crate serde;
 
 use std::collections::HashMap;
 use std::env;
+use std::fs::{OpenOptions, remove_dir_all};
+use std::io::Write;
 use std::path::Path;
 use std::process::exit;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Instant;
+use std::time::{Duration, Instant};
+
+use reqwest::blocking::Client;
 
 mod lookup;
 mod connection;
@@ -18,27 +24,72 @@ mod files;
 mod squire;
 mod parser;
 
-fn runner(filename: &str,
-          exclusions: Vec<String>,
-          counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>>) -> i32 {
+pub struct ValidationResult {
+    pub count: i32,
+    pub errors: Vec<String>,
+}
+
+fn verify_actions() -> Option<bool> {
+    match env::var("GITHUB_ACTIONS") {
+        Ok(val) => match val.parse() {
+            Ok(parsed) => Some(parsed),
+            Err(_) => {
+                None
+            }
+        },
+        Err(_) => None
+    }
+}
+
+fn generate_summary(data: Vec<String>) {
+    let path = "GH_ACTIONS_SUMMARY";
+    match OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path) {
+        Ok(mut file) => {
+            for line in data {
+                let linebreak = format!("{}\n", line);
+                match file.write_all(linebreak.as_bytes()) {
+                    Ok(_) => log::info!("Data written to {:?}", &path),
+                    Err(_) => log::error!("Failed to write data into {:?}", &path)
+                }
+            }
+        }
+        Err(err) => {
+            log::error!("{}", err);
+        }
+    }
+}
+
+fn runner(
+    filename: &str,
+    exclusions: Vec<String>,
+    counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>>,
+    client: Client
+) -> ValidationResult {
     let mut urls = 0;
+    log::info!("Reading file: {}", filename);
     let text = match files::read(filename) {
         Ok(content) => content,
         Err(error) => {
             log::error!("{}", error);
-            return urls;
+            return ValidationResult { count: urls, errors: vec![error.to_string()] };
         }
     };
-    let text = text.to_string();
     let mut threads = Vec::new();
-    for hyperlink in lookup::find_md_links(text.as_str()) {
+    let responses = Arc::new(Mutex::new(Vec::new()));
+    for hyperlink in lookup::find_md_links(&text) {
         urls += 1;
         let hyperlink_clone = hyperlink.clone();
         let exclusions_cloned = exclusions.clone();
+        let client_cloned = client.clone();
         let counter_cloned = counter.clone();
+        let responses_cloned = responses.clone();
+        let filename = filename.split('/').last().unwrap().to_string();
         let handle = thread::spawn(move || {
-            let success_flag = connection::verify_url(&hyperlink, exclusions_cloned);
-            if success_flag {
+            let response = connection::verify_url(&hyperlink, exclusions_cloned, client_cloned);
+            if response.ok {
                 let mut success_count = counter_cloned.lock().unwrap();
                 let success_counter = success_count.entry("success".to_string()).or_insert(Arc::new(Mutex::new(0)));
                 *success_counter.lock().unwrap() += 1;
@@ -46,9 +97,9 @@ fn runner(filename: &str,
                 let mut failed_count = counter_cloned.lock().unwrap();
                 let failed_counter = failed_count.entry("failed".to_string()).or_insert(Arc::new(Mutex::new(0)));
                 *failed_counter.lock().unwrap() += 1;
-                if env::var("exit_code").unwrap_or("0".to_string()) != "1" {
-                    env::set_var("exit_code", "1");
-                }
+                let mut locked_responses = responses_cloned.lock().unwrap();
+                let res = format!("{} - {}", filename, response.response);
+                locked_responses.push(res);
             }
         });
         threads.push((hyperlink_clone, handle));
@@ -58,7 +109,18 @@ fn runner(filename: &str,
             log::error!("Error awaiting thread: {:?}", url_info)
         }
     }
-    urls
+    let responses_cloned = responses.lock().unwrap().clone();
+    ValidationResult {
+        count: urls,
+        errors: responses_cloned,
+    }
+}
+
+fn request_builder() -> Client {
+    let client = reqwest::blocking::ClientBuilder::new().user_agent("rustc");
+    let client = client.connect_timeout(Duration::from_secs(3));
+    // let client = client.min_tls_version(reqwest::tls::Version::TLS_1_2);
+    client.build().unwrap()
 }
 
 fn main() {
@@ -79,31 +141,52 @@ fn main() {
             exclusions.push(exclusion);
         }
     }
-    let wiki_path = format!("{}.wiki", config.repo);
-    log::debug!("Cloning {}", &wiki_path);
-    let command = format!("git clone https://github.com/{}/{}.git", config.owner, wiki_path);
+    let wiki = format!("{}.wiki", config.repo);
+    let wiki_path = Path::new(&wiki);
+    log::debug!("Cloning {}", &wiki);
+    let command = format!("git clone https://github.com/{}/{}.git", config.owner, wiki);
     if git::run(command.as_str()) {
-        let path = Path::new(&wiki_path);
-        if !path.exists() {
+        if !wiki_path.exists() {
             log::error!("Cloning was successful but wiki path wasn't found");
             env::set_var("exit_code", "1");
         }
     }
+    let client = request_builder();
+    let errors = Arc::new(Mutex::new(Vec::new()));
     let counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>> = Arc::new(Mutex::new(HashMap::new()));
     let mut threads = Vec::new();
     for md_file in files::get_markdown() {
         let md_file_cloned = md_file.clone();  // clone due to use in closure
+        let client_cloned = client.clone();
         let exclusions_cloned = exclusions.clone();
         let counter_cloned = counter.clone();
+        let errors_cloned = errors.clone();
         let handle = thread::spawn(move || {
-            let count = runner(&md_file_cloned, exclusions_cloned, counter_cloned);
-            log::info!("Scanned '{}' with {} URLs", md_file_cloned.split('/').last().unwrap().to_string(), count);
+            let validation_result = runner(&md_file_cloned, exclusions_cloned, counter_cloned, client_cloned);
+            log::info!(
+                "Scanned '{}' with {} URLs",
+                md_file_cloned.split('/').last().unwrap().to_string(),
+                validation_result.count
+            );
+            let mut locked_errors = errors_cloned.lock().unwrap();
+            locked_errors.extend(validation_result.errors);
         });
         threads.push((md_file, handle));
     }
     for (file, handle) in threads {
         if handle.join().is_err() {
             log::error!("Error awaiting thread: {}", file)
+        }
+    }
+    let errors_cloned = errors.lock().unwrap().clone();
+    if verify_actions().unwrap_or(false) && !errors_cloned.is_empty() {
+        log::info!("{:?}", &errors_cloned);
+        generate_summary(errors_cloned);
+    }
+    if wiki_path.exists() {
+        match remove_dir_all(wiki_path) {
+            Ok(_) => log::info!("Removed {}", wiki_path),
+            Err(err) => log::error!("Failed to delete: {}", err)
         }
     }
     squire::unwrap(counter);

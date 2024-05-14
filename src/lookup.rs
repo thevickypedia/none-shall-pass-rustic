@@ -2,7 +2,13 @@ use std::collections::HashMap;
 
 use regex::Regex;
 
-pub fn find_md_links(markdown: &str) -> Vec<(String, String)> {
+#[derive(Debug, Clone)]
+pub struct Hyperlink {
+    pub text: String,
+    pub url: String,
+}
+
+pub fn find_md_links(markdown: &String) -> Vec<Hyperlink> {
     let inline_link_pattern = r"\[([^\]]+)\]\(([^)]+)\)";
     let anchored_link_pattern = r"\[([^\]]+)\]:\s+(\S+)";
     let footnote_link_text_pattern = r"\[([^\]]+)\]\[(\d+)\]";
@@ -17,13 +23,13 @@ pub fn find_md_links(markdown: &str) -> Vec<(String, String)> {
     for caps in inline_link_re.captures_iter(markdown) {
         let link_text = caps.get(1).unwrap().as_str().to_string();
         let link_url = caps.get(2).unwrap().as_str().to_string();
-        links.push((link_text, link_url));
+        links.push(Hyperlink{ text: link_text, url: link_url });
     }
 
     for caps in anchored_link_re.captures_iter(markdown) {
         let link_text = caps.get(1).unwrap().as_str().to_string();
         let link_url = caps.get(2).unwrap().as_str().to_string();
-        links.push((link_text, link_url));
+        links.push(Hyperlink{ text: link_text, url: link_url });
     }
 
     let mut footnote_links = HashMap::new();
@@ -43,7 +49,7 @@ pub fn find_md_links(markdown: &str) -> Vec<(String, String)> {
 
     for (key, value) in footnote_links.iter() {
         if let Some(url) = footnote_urls.get(key) {
-            links.push((value.to_string(), url.to_string()));
+            links.push(Hyperlink{ text: value.to_string(), url: url.to_string() });
         }
     }
 

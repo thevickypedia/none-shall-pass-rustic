@@ -1,28 +1,36 @@
 extern crate reqwest;
 
 use std::error::Error;
-use std::time::Duration;
+use reqwest::blocking::Client;
+use serde::{Deserialize, Serialize};
+use lookup::Hyperlink;
 
-pub fn verify_url(hyperlink: &(String, String), exclusions: Vec<String>) -> bool {
-    let (text, url) = hyperlink;
-    let client = reqwest::blocking::ClientBuilder::new().user_agent("rustc");
-    let client = client.connect_timeout(Duration::from_secs(3));
-    // let client = client.min_tls_version(reqwest::tls::Version::TLS_1_2);
-    let request = client.build();
-    let response = request.unwrap().get(url).send();
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct Response {
+    pub ok: bool,
+    #[serde(default = "default_response")]
+    pub response: String
+}
+
+fn default_response() -> String { String::new() }
+
+pub fn verify_url(hyperlink: &Hyperlink, exclusions: Vec<String>, request: Client) -> Response {
+    let text = hyperlink.text.to_string();
+    let url = hyperlink.url.to_string();
+    let response = request.get(&url).send();
     let error_reason;
     match response {
         Ok(ok) => {
             let status_code = ok.status().as_u16();
             if status_code < 400 {
                 log::debug!("'{}: {}' - {}", text, url, ok.status());
-                return true;
+                return Response { ok: true, ..Default::default() };
             }
             error_reason = format!("'{}: {}' resolved but returned '{}'", text, url, ok.status());
             if status_code == 429 || status_code == 403 {
                 // too many requests or forbidden
                 log::warn!("{}", error_reason);
-                return true;
+                return Response { ok: true, ..Default::default() };
             }
         }
         Err(err) => {
@@ -33,9 +41,9 @@ pub fn verify_url(hyperlink: &(String, String), exclusions: Vec<String>) -> bool
     for exclusion in exclusions {
         if url.contains(&exclusion) {
             log::warn!("{} but excluded", error_reason);
-            return true;
+            return Response { ok: true, ..Default::default() };
         }
     }
     log::error!("{}", error_reason);
-    false
+    return Response { ok: false, response: error_reason };
 }
