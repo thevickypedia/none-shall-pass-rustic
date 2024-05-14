@@ -12,6 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Update Rust
+      # print it with style
+      run: |
+        printf '*%.0s' {1..60} && printf "\n"
+        echo "Existing rust version: $(rustc --version)"
+        printf '*%.0s' {1..60} && printf "\n\n"
+        rustup update && printf "\n"
+        printf '*%.0s' {1..60} && printf "\n"
+        echo "Updated rust version: $(rustc --version)"
+        printf '*%.0s' {1..60} && printf "\n"
     - name: Get Package Name
       run: |
         name=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
