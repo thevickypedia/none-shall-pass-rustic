@@ -51,13 +51,13 @@ fn generate_summary(data: Vec<String>) {
             for line in data {
                 let linebreak = format!("{}\n", line);
                 match file.write_all(linebreak.as_bytes()) {
-                    Ok(_) => log::info!("Data written to {:?}", &path),
+                    Ok(_) => log::debug!("{:?} written to {:?}", &line, &path),
                     Err(_) => log::error!("Failed to write data into {:?}", &path)
                 }
             }
         }
         Err(err) => {
-            log::error!("{}", err);
+            log::error!("Failed to create summary file: {}", err);
         }
     }
 }

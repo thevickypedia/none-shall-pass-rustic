@@ -9,9 +9,7 @@ env:
 
 jobs:
   build:
-    runs-on:
-      - self-hosted
-      - Ubuntu
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     - name: Get Package Name
