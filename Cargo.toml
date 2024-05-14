@@ -1,12 +1,14 @@
 # https://doc.rust-lang.org/cargo/getting-started/first-steps.html#first-steps-with-cargo
 [package]
 name = "none-shall-pass"
-version = "0.1.6"
+version = "0.1.7"
 description = "Artifact for GitHub Action to validate hyperlinks in all markdown files"
 license = "MIT"
+rust-version = "1.78.0"
 documentation = "https://thevickypedia.github.io/none-shall-pass"
 homepage = "https://github.com/thevickypedia/none-shall-pass-rustic"
 repository = "https://github.com/thevickypedia/none-shall-pass-rustic"
+authors = ["Vignesh Rao"]
 
 ## For local debug purpose (this project is desinged to be used in GH Actions as an executable, not a library)
 ## https://httpbin.org/

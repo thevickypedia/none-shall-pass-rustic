@@ -45,7 +45,7 @@ pub fn arguments() -> Args {
             "--owner" => {
                 i += 1; // Move to the next argument.
                 if i < args.len() {
-                    owner = args[i].clone();
+                    owner.clone_from(&args[i]);
                 } else {
                     println!("\n--owner\n\tInput requires a value [type=missing]\n");
                     exit(1)
@@ -54,7 +54,7 @@ pub fn arguments() -> Args {
             "--repo" => {
                 i += 1; // Move to the next argument.
                 if i < args.len() {
-                    repo = args[i].clone();
+                    repo.clone_from(&args[i]);
                 } else {
                     println!("\n--repo\n\tInput requires a value [type=missing]\n");
                     exit(1)
@@ -63,7 +63,7 @@ pub fn arguments() -> Args {
             "--exclude" => {
                 i += 1; // Move to the next argument.
                 if i < args.len() {
-                    exclude_me = args[i].clone();
+                    exclude_me.clone_from(&args[i]);
                 } else {
                     println!("\n--exclude\n\tInput requires a value [type=missing]\n");
                     exit(1)

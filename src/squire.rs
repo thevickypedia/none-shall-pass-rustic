@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::env;
 use std::sync::{Arc, Mutex};
 
 pub fn unwrap(counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>>) {
@@ -18,10 +17,4 @@ pub fn unwrap(counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>>) {
     log::info!("URLs successfully validated: {}", success_count);
     log::info!("URLs failed to validate: {}", failed_count);
     log::info!("Total URLs validated: {}", success_count + failed_count);
-}
-
-// todo: give some better use for the exit code in GH actions
-pub fn get_exit_code() -> i32 {
-    let string = env::var("exit_code").unwrap_or("0".to_string());
-    string.parse::<i32>().unwrap_or(0)
 }

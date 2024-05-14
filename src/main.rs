@@ -10,7 +10,6 @@ use std::env;
 use std::fs::{OpenOptions, remove_dir_all};
 use std::io::Write;
 use std::path::Path;
-use std::process::exit;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -147,7 +146,6 @@ fn main() {
     let command = format!("git clone https://github.com/{}/{}.git", config.owner, wiki);
     if git::run(command.as_str()) && !wiki_path.exists() {
         log::error!("Cloning was successful but wiki path wasn't found");
-        env::set_var("exit_code", "1");
     }
     let client = request_builder();
     let errors = Arc::new(Mutex::new(Vec::new()));
@@ -178,7 +176,6 @@ fn main() {
     }
     let errors_cloned = errors.lock().unwrap().clone();
     if verify_actions().unwrap_or(false) && !errors_cloned.is_empty() {
-        log::info!("{:?}", &errors_cloned);
         generate_summary(errors_cloned);
     }
     if wiki_path.exists() {
@@ -190,5 +187,4 @@ fn main() {
     squire::unwrap(counter);
     let elapsed = start.elapsed();
     log::info!("'none-shall-pass' protocol completed. Elapsed time: {:?}s", elapsed.as_secs());
-    exit(squire::get_exit_code());
 }
