@@ -7,14 +7,14 @@ extern crate serde;
 
 use std::collections::HashMap;
 use std::env;
-use std::fs::{OpenOptions, remove_dir_all};
-use std::io::Write;
+use std::fs::{File, remove_dir_all};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use reqwest::blocking::Client;
+use crate::lookup::Hyperlink;
 
 mod lookup;
 mod connection;
@@ -25,7 +25,7 @@ mod parser;
 
 pub struct ValidationResult {
     pub count: i32,
-    pub errors: Vec<String>,
+    pub errors: Vec<HashMap<String, Hyperlink>>,
 }
 
 fn verify_actions() -> Option<bool> {
@@ -40,18 +40,29 @@ fn verify_actions() -> Option<bool> {
     }
 }
 
-fn generate_summary(data: Vec<String>) {
-    let path = "GH_ACTIONS_SUMMARY";
-    match OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path) {
-        Ok(mut file) => {
-            for line in data {
-                let linebreak = format!("{}\n", line);
-                match file.write_all(linebreak.as_bytes()) {
-                    Ok(_) => log::debug!("{:?} written to {:?}", &line, &path),
-                    Err(_) => log::error!("Failed to write data into {:?}", &path)
+fn jsonify(data: Vec<HashMap<String, Hyperlink>>) -> Vec<HashMap<String, String>> {
+    let mut data_vec = Vec::new();
+    for map in data {
+        let mut data_map = HashMap::new();
+        for (filename, hyperlink) in map {
+            data_map.insert("filename".to_string(), filename);
+            data_map.insert("text".to_string(), hyperlink.text);
+            data_map.insert("url".to_string(), hyperlink.url);
+        }
+        data_vec.push(data_map)
+    }
+    data_vec
+}
+
+fn generate_summary(data: Vec<HashMap<String, Hyperlink>>) {
+    let path = "gh_actions_summary.json";
+    match File::create(path) {
+        Ok(file) => {
+            let json_data = jsonify(data);
+            match serde_json::to_writer(&file, &json_data) {
+                Ok(_) => log::info!("Dumped error information into JSON file"),
+                Err(err) => {
+                    log::error!("Failed to write JSON data to file: {}", err);
                 }
             }
         }
@@ -73,7 +84,10 @@ fn runner(
         Ok(content) => content,
         Err(error) => {
             log::error!("{}", error);
-            return ValidationResult { count: urls, errors: vec![error.to_string()] };
+            return ValidationResult {
+                count: urls,
+                errors: vec![HashMap::from([(filename.to_string(), Hyperlink::default())])]
+            };
         }
     };
     let mut threads = Vec::new();
@@ -97,8 +111,11 @@ fn runner(
                 let failed_counter = failed_count.entry("failed".to_string()).or_insert(Arc::new(Mutex::new(0)));
                 *failed_counter.lock().unwrap() += 1;
                 let mut locked_responses = responses_cloned.lock().unwrap();
-                let res = format!("{} - {}", filename, response.response);
-                locked_responses.push(res);
+                let hashmap = HashMap::from([(filename, response.hyperlink)]);
+                locked_responses.push(hashmap);
+                if env::var("nsp_exit_code").unwrap_or("0".to_string()) != "1" {
+                    env::set_var("nsp_exit_code", "1");
+                }
             }
         });
         threads.push((hyperlink_clone, handle));
@@ -146,6 +163,7 @@ fn main() {
     let command = format!("git clone https://github.com/{}/{}.git", config.owner, wiki);
     if git::run(command.as_str()) && !wiki_path.exists() {
         log::error!("Cloning was successful but wiki path wasn't found");
+        env::set_var("nsp_exit_code", "1");
     }
     let client = request_builder();
     let errors = Arc::new(Mutex::new(Vec::new()));

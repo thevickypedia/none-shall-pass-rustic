@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Hyperlink {
     pub text: String,
     pub url: String,
