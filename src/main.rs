@@ -12,6 +12,7 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
+use regex::Regex;
 
 use reqwest::blocking::Client;
 use crate::lookup::Hyperlink;
@@ -23,9 +24,16 @@ mod files;
 mod squire;
 mod parser;
 
-pub struct ValidationResult {
-    pub count: i32,
-    pub errors: Vec<HashMap<String, Hyperlink>>,
+#[derive(Clone, Default)]
+struct JSONResponse {
+    filename: String,
+    filepath: String,
+    hyperlink: Hyperlink
+}
+
+struct ValidationResult {
+    count: i32,
+    errors: Vec<JSONResponse>,
 }
 
 fn verify_actions() -> Option<bool> {
@@ -40,21 +48,20 @@ fn verify_actions() -> Option<bool> {
     }
 }
 
-fn jsonify(data: Vec<HashMap<String, Hyperlink>>) -> Vec<HashMap<String, String>> {
+fn jsonify(data: Vec<JSONResponse>) -> Vec<HashMap<&'static str, String>> {
     let mut data_vec = Vec::new();
-    for map in data {
+    for json_obj in data {
         let mut data_map = HashMap::new();
-        for (filename, hyperlink) in map {
-            data_map.insert("filename".to_string(), filename);
-            data_map.insert("text".to_string(), hyperlink.text);
-            data_map.insert("url".to_string(), hyperlink.url);
-        }
+        data_map.insert("filename", json_obj.filename);
+        data_map.insert("filepath", json_obj.filepath);
+        data_map.insert("text", json_obj.hyperlink.text);
+        data_map.insert("url", json_obj.hyperlink.url);
         data_vec.push(data_map)
     }
     data_vec
 }
 
-fn generate_summary(data: Vec<HashMap<String, Hyperlink>>) {
+fn generate_summary(data: Vec<JSONResponse>) {
     let path = "gh_actions_summary.json";
     match File::create(path) {
         Ok(file) => {
@@ -73,20 +80,21 @@ fn generate_summary(data: Vec<HashMap<String, Hyperlink>>) {
 }
 
 fn runner(
-    filename: &str,
+    md_file: &str,
+    cwd: String,
     exclusions: Vec<String>,
     counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>>,
     client: Client
 ) -> ValidationResult {
     let mut urls = 0;
-    log::info!("Reading file: {}", filename);
-    let text = match files::read(filename) {
+    log::info!("Reading file: {}", md_file);
+    let text = match files::read(md_file) {
         Ok(content) => content,
         Err(error) => {
             log::error!("{}", error);
             return ValidationResult {
                 count: urls,
-                errors: vec![HashMap::from([(filename.to_string(), Hyperlink::default())])]
+                errors: vec![JSONResponse::default()]
             };
         }
     };
@@ -99,7 +107,18 @@ fn runner(
         let client_cloned = client.clone();
         let counter_cloned = counter.clone();
         let responses_cloned = responses.clone();
-        let filename = filename.split('/').last().unwrap().to_string();
+        let filepath;
+        if md_file.contains(".wiki") {
+            let pattern = Regex::new(r"[^.]+\.wiki").unwrap();
+            filepath = pattern.replace(&md_file, "wiki").to_string();
+        } else {
+            filepath = md_file
+                .replace(&cwd, "")
+                .replace(".wiki", "/wiki")
+                .trim_start_matches("/")
+                .trim_end_matches(".md")
+                .to_string();
+        }
         let handle = thread::spawn(move || {
             let response = connection::verify_url(&hyperlink, exclusions_cloned, client_cloned);
             if response.ok {
@@ -111,8 +130,13 @@ fn runner(
                 let failed_counter = failed_count.entry("failed".to_string()).or_insert(Arc::new(Mutex::new(0)));
                 *failed_counter.lock().unwrap() += 1;
                 let mut locked_responses = responses_cloned.lock().unwrap();
-                let hashmap = HashMap::from([(filename, response.hyperlink)]);
-                locked_responses.push(hashmap);
+                let filename = filepath.split('/').last().unwrap().to_string();
+                let json_response = JSONResponse {
+                    filename,
+                    filepath,
+                    hyperlink: response.hyperlink
+                };
+                locked_responses.push(json_response);
                 if env::var("nsp_exit_code").unwrap_or("0".to_string()) != "1" {
                     env::set_var("nsp_exit_code", "1");
                 }
@@ -168,6 +192,10 @@ fn main() {
     let client = request_builder();
     let errors = Arc::new(Mutex::new(Vec::new()));
     let counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>> = Arc::new(Mutex::new(HashMap::new()));
+    let current_working_dir = env::current_dir()
+        .unwrap()
+        .to_string_lossy()
+        .to_string();
     let mut threads = Vec::new();
     for md_file in files::get_markdown() {
         let md_file_cloned = md_file.clone();  // clone due to use in closure
@@ -175,8 +203,15 @@ fn main() {
         let exclusions_cloned = exclusions.clone();
         let counter_cloned = counter.clone();
         let errors_cloned = errors.clone();
+        let current_working_dir_cloned = current_working_dir.clone();
         let handle = thread::spawn(move || {
-            let validation_result = runner(&md_file_cloned, exclusions_cloned, counter_cloned, client_cloned);
+            let validation_result = runner(
+                &md_file_cloned,
+                current_working_dir_cloned,
+                exclusions_cloned,
+                counter_cloned,
+                client_cloned
+            );
             log::info!(
                 "Scanned '{}' with {} URLs",
                 md_file_cloned.split('/').last().unwrap().to_string(),

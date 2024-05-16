@@ -14,7 +14,7 @@ pub fn unwrap(counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>>) {
     if let Some(failed_ref) = failed {
         failed_count = *failed_ref.lock().unwrap();
     }
-    log::info!("URLs successfully validated: {}", success_count);
-    log::info!("URLs failed to validate: {}", failed_count);
-    log::info!("Total URLs validated: {}", success_count + failed_count);
+    log::info!("Hyperlinks resolved: {}", success_count);
+    log::info!("Hyperlinks unresolved: {}", failed_count);
+    log::info!("Total hyperlinks validated: {}", success_count + failed_count);
 }
