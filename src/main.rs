@@ -109,14 +109,17 @@ fn runner(
         let responses_cloned = responses.clone();
         let filepath;
         if md_file.contains(".wiki") {
+            // If the markdown file is in a wiki, removes preceding text, and the .md extension
             let pattern = Regex::new(r"[^.]+\.wiki").unwrap();
-            filepath = pattern.replace(&md_file, "wiki").to_string();
-        } else {
-            filepath = md_file
-                .replace(&cwd, "")
-                .replace(".wiki", "/wiki")
-                .trim_start_matches("/")
+            filepath = pattern
+                .replace(&md_file, "wiki")
                 .trim_end_matches(".md")
+                .to_string();
+        } else {
+            // If the markdown file is in repo, removes the current working directory and path prefix
+            filepath = md_file
+                .trim_start_matches(&cwd)
+                .trim_start_matches("/")
                 .to_string();
         }
         let handle = thread::spawn(move || {
