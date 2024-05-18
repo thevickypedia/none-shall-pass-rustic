@@ -140,9 +140,6 @@ fn runner(
                     hyperlink: response.hyperlink
                 };
                 locked_responses.push(json_response);
-                if env::var("nsp_exit_code").unwrap_or("0".to_string()) != "1" {
-                    env::set_var("nsp_exit_code", "1");
-                }
             }
         });
         threads.push((hyperlink_clone, handle));
@@ -190,7 +187,6 @@ fn main() {
     let command = format!("git clone https://github.com/{}/{}.git", config.owner, wiki);
     if git::run(command.as_str()) && !wiki_path.exists() {
         log::error!("Cloning was successful but wiki path wasn't found");
-        env::set_var("nsp_exit_code", "1");
     }
     let client = request_builder();
     let errors = Arc::new(Mutex::new(Vec::new()));
