@@ -8,100 +8,163 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  conditions:
+    outputs:
+      release: ${{ steps.set-release-flag.outputs.release }}
+      release-id: ${{ steps.get-release-id.outputs.release_id }}
+    runs-on: thevickypedia-default
     steps:
-    - uses: actions/checkout@v4
-    - name: Update Rust
-      # print it with style
-      run: |
-        printf '*%.0s' {1..60} && printf "\n"
-        echo "Existing rust version: $(rustc --version)"
-        printf '*%.0s' {1..60} && printf "\n\n"
-        rustup update && printf "\n"
-        printf '*%.0s' {1..60} && printf "\n"
-        echo "Updated rust version: $(rustc --version)"
-        printf '*%.0s' {1..60} && printf "\n"
-    - name: Get Package Name
-      run: |
-        name=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
-        echo "Package Name: $name"
-        echo "pkg_name=$name" >> $GITHUB_ENV
-        echo "asset_name=asset_$name" >> $GITHUB_ENV
-      shell: bash
-    - name: Set Release Flag
-      run: |
-        current_version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
-        latest_version=$(curl -s https://crates.io/api/v1/crates/${{ env.pkg_name }} | jq -r '.versions[0].num')
-        echo "Current Package Version: ${current_version}"
-        echo "Latest Package Version: ${latest_version}"
-        if [ "$latest_version" != "$current_version" ]; then
-          echo "Version has changed. Setting release flag to true."
-          echo "release=true" >> $GITHUB_ENV
-        else
-          echo "Version has not changed. Setting release flag to false."
-          echo "release=false" >> $GITHUB_ENV
-        fi
-        echo "pkg_version=$current_version" >> $GITHUB_ENV
-      shell: bash
-    - name: Build
-      run: |
-        if [ "${{ env.release }}" == "true" ]; then
-          cargo build --release
-        else
-          cargo build --verbose
-        fi
-    - name: Run tests
-      run: |
-        if [ "${{ env.release }}" == "true" ]; then
-          cargo test
-        else
-          cargo test --verbose
-        fi
-    - name: Copy Compiled Executable
-      if: env.release == 'true'
-      run: |
-        src_dir="target/release"
-        if [ -f "$src_dir/${{ env.pkg_name }}" ]; then
-          cp "$src_dir/${{ env.pkg_name }}" "$asset_name"
-          echo "Copied '${{ env.pkg_name }}' as '$asset_name' to $(pwd)"
-        else
-          echo "The file ${{ env.pkg_name }} does not exist in $src_dir."
-        fi
-      shell: bash
-    - name: Create New Release
-      if: env.release == 'true'
-      run: |
-        release_tag="v${{ env.pkg_version }}"
-        cargo_prerelease=("alpha" "beta" "rc")
-        prerelease=false
-        for cargo_pre in "${cargo_prerelease[@]}"; do
-          if [[ $pkg_version == *"$cargo_pre"* ]]; then
-            prerelease=true
-            break
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Get Package Name
+        run: |
+          name=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
+          echo "Package Name: $name"
+          echo "pkg_name=$name" >> $GITHUB_ENV
+          echo "asset_name=asset_$name" >> $GITHUB_ENV
+        shell: bash
+      - name: Set Release Flag
+        id: set-release-flag
+        run: |
+          current_version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')
+          latest_version=$(curl -s https://crates.io/api/v1/crates/${{ env.pkg_name }} | jq -r '.versions[0].num')
+          echo "Current Package Version: ${current_version}"
+          echo "Latest Package Version: ${latest_version}"
+          if [ "$latest_version" != "$current_version" ]; then
+            echo "Version has changed. Setting release flag to true."
+            echo "release=true" >> $GITHUB_ENV
+          else
+            echo "Version has not changed. Setting release flag to false."
+            echo "release=false" >> $GITHUB_ENV
           fi
-        done
-        commit_msg="Release compiled executable for $release_tag"
-        release_data="{\"tag_name\":\"$release_tag\",\"name\":\"$release_tag\",\"body\":\"$commit_msg\",\"draft\":false,\"prerelease\":$prerelease}"
-        response=$(curl -X POST -H "Authorization: token ${{ secrets.GIT_TOKEN }}" \
-          -d "$release_data" \
-          "https://api.github.com/repos/${{ github.repository }}/releases")
+          echo "pkg_version=$current_version" >> $GITHUB_ENV
+          echo "release=$release" >> "$GITHUB_OUTPUT"
+        shell: bash
+      - name: Create New Release
+        id: get-release-id
+        if: env.release == 'true'
+        run: |
+          release_tag="v${{ env.pkg_version }}"
+          cargo_prerelease=("alpha" "beta" "rc")
+          prerelease=false
+          for cargo_pre in "${cargo_prerelease[@]}"; do
+            if [[ $pkg_version == *"$cargo_pre"* ]]; then
+              prerelease=true
+              break
+            fi
+          done
+          commit_msg="Release compiled executable for $release_tag"
+          release_data="{\"tag_name\":\"$release_tag\",\"name\":\"$release_tag\",\"body\":\"$commit_msg\",\"draft\":false,\"prerelease\":$prerelease}"
+          response=$(curl -X POST -H "Authorization: token ${{ secrets.GIT_TOKEN }}" \
+            -d "$release_data" \
+            "https://api.github.com/repos/${{ github.repository }}/releases")
+          
+          release_id=$(echo $response | jq -r .id)
+          echo "Release ID: $release_id"
+          echo "release_id=$release_id" >> "$GITHUB_OUTPUT"
+        shell: bash
 
-        release_id=$(echo $response | jq -r .id)
-        echo "Release ID: $release_id"
-        echo "release_id=$release_id" >> $GITHUB_ENV
-      shell: bash
-    - name: Upload Asset to Release
-      if: env.release == 'true'
-      run: |
-        curl -X POST -H "Authorization: token ${{ secrets.GIT_TOKEN }}" \
-        -H "Content-Type: application/octet-stream" \
-        --data-binary @"$asset_name" \
-        "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ env.release_id }}/assets?name=$asset_name"
-      shell: bash
-    - name: Release Crate
-      if: env.release == 'true'
-      run: |
-        cargo login ${{ secrets.CRATES_TOKEN }}
-        cargo publish --allow-dirty  # Set allow-dirty since building will create a /target folder that will be uncommitted in git
-      shell: bash
+  build-and-upload:
+    if: ${{ github.event_name == 'release' }}
+    needs: conditions
+    strategy:
+      matrix:
+        platform:
+          # Naming Convention: {operating_system}-{architecture}-{package_name}.{archive_format}
+          - release_for: darwin-amd64
+            bin: none-shall-pass
+            name: darwin-amd64-none-shall-pass.tar.gz
+            pkg-name: darwin-amd64-none-shall-pass
+
+          - release_for: darwin-arm64
+            bin: none-shall-pass
+            name: darwin-arm64-none-shall-pass.tar.gz
+            pkg-name: darwin-arm64-none-shall-pass
+
+          - release_for: linux-amd64
+            bin: none-shall-pass
+            name: linux-amd64-none-shall-pass.tar.gz
+            pkg-name: linux-amd64-none-shall-pass
+
+          - release_for: windows-amd64
+            bin: none-shall-pass.exe
+            name: windows-amd64-none-shall-pass.zip
+            pkg-name: windows-amd64-none-shall-pass
+
+    name: Upload asset for ${{ matrix.platform.release_for }}
+    runs-on: ${{ matrix.platform.release_for }}
+    steps:
+      - name: Release ID Propagation
+        run: |
+          if [ -n "${{ needs.conditions.outputs.release-id }}" ]; then
+            echo "Release ID propagated: ${{ needs.conditions.outputs.release-id }}"
+          else
+            echo "Release ID propagation failed. Exiting.."
+            exit 1
+          fi
+          echo "start_time=$(date +%s)" >> "$GITHUB_ENV"
+        shell: bash
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Update Rust
+        # print it with style
+        run: |
+          printf '*%.0s' {1..60} && printf "\n"
+          echo "Existing rust version: $(rustc --version)"
+          printf '*%.0s' {1..60} && printf "\n\n"
+          rustup update && printf "\n"
+          printf '*%.0s' {1..60} && printf "\n"
+          echo "Updated rust version: $(rustc --version)"
+          printf '*%.0s' {1..60} && printf "\n"
+      - name: Build
+        run: |
+          if [ "${{ needs.conditions.outputs.release }}" == "true" ]; then
+            cargo build --release
+          else
+            cargo build --verbose
+          fi
+      - name: Run tests
+        run: |
+          if [ "${{ needs.conditions.outputs.release }}" == "true" ]; then
+            cargo test
+          else
+            cargo test --verbose
+          fi
+
+      - name: Copy Asset (Windows)
+        if: matrix.platform.release_for == 'windows*'
+        run: |
+          mkdir -p ${{ matrix.platform.pkg-name }}
+          cp ${{ matrix.platform.bin }} ${{ matrix.platform.pkg-name }}/${{ matrix.platform.bin }}
+          Compress-Archive -DestinationPath ${{ matrix.platform.name }} -Path ${{ matrix.platform.pkg-name }}
+        shell: pwsh
+
+      - name: Copy Asset (macOS/Linux/RaspberryPi)
+        if: matrix.platform.release_for != 'windows*'
+        run: |
+          mkdir -p ${{ matrix.platform.pkg-name }}
+          cp ${{ matrix.platform.bin }} ${{ matrix.platform.pkg-name }}/${{ matrix.platform.bin }}
+          tar -zcvf ${{ matrix.platform.name }} ${{ matrix.platform.pkg-name }}
+        shell: bash
+
+      - name: Upload Asset to Release
+        if: needs.conditions.outputs.release == 'true'
+        run: |
+          curl -X POST -H "Authorization: token ${{ secrets.GIT_TOKEN }}" \
+          -H "Content-Type: application/octet-stream" \
+          --data-binary @"${{ matrix.platform.name }}" \
+          "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ needs.conditions.outputs.release-id }}/assets?name=${{ matrix.platform.name }}"
+        shell: bash
+
+  release-crate:
+    runs-on: thevickypedia-default
+    needs: [ conditions, build-and-upload ]
+    steps:
+      - name: Release Crate
+        if: needs.conditions.outputs.release == 'true'
+        run: |
+          cargo login ${{ secrets.CRATES_TOKEN }}
+          cargo publish --allow-dirty  # Set allow-dirty since building will create a /target folder that will be uncommitted in git
+        shell: bash
