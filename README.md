@@ -29,6 +29,9 @@ Artifact for [none-shall-pass][3]
 ## Crate
 https://crates.io/crates/none-shall-pass
 
+## Docs
+https://docs.rs/crate/none-shall-pass
+
 ## Linting
 ### Requirement
 ```shell
