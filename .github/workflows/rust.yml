@@ -70,26 +70,21 @@ jobs:
     strategy:
       matrix:
         platform:
-          # Naming Convention: {operating_system}-{architecture}-{package_name}.{archive_format}
-          - release_for: darwin-amd64
+          # Naming Convention: {package_name}-{operating_system}.{archive_format}
+          - release_for: macos-latest
             bin: none-shall-pass
-            name: darwin-amd64-none-shall-pass.tar.gz
-            pkg-name: darwin-amd64-none-shall-pass
+            name: none-shall-pass-darwin.tar.gz
+            pkg-name: none-shall-pass-darwin
 
-          - release_for: darwin-arm64
+          - release_for: ubuntu-latest
             bin: none-shall-pass
-            name: darwin-arm64-none-shall-pass.tar.gz
-            pkg-name: darwin-arm64-none-shall-pass
+            name: none-shall-pass-linux.tar.gz
+            pkg-name: none-shall-pass-linux
 
-          - release_for: linux-amd64
-            bin: none-shall-pass
-            name: linux-amd64-none-shall-pass.tar.gz
-            pkg-name: linux-amd64-none-shall-pass
-
-          - release_for: windows-amd64
+          - release_for: windows-latest
             bin: none-shall-pass.exe
-            name: windows-amd64-none-shall-pass.zip
-            pkg-name: windows-amd64-none-shall-pass
+            name: none-shall-pass-windows.zip
+            pkg-name: none-shall-pass-windows
 
     name: Upload asset for ${{ matrix.platform.release_for }}
     runs-on: ${{ matrix.platform.release_for }}
@@ -108,6 +103,7 @@ jobs:
           echo "Updated rust version: $(rustc --version)"
           printf '*%.0s' {1..60} && printf "\n"
         shell: bash
+
       - name: Build
         run: |
           if [ "${{ needs.conditions.outputs.release }}" == "true" ]; then
@@ -116,6 +112,7 @@ jobs:
             cargo build --verbose
           fi
         shell: bash
+
       - name: Run tests
         run: |
           if [ "${{ needs.conditions.outputs.release }}" == "true" ]; then
@@ -160,6 +157,15 @@ jobs:
           -H "Content-Type: application/octet-stream" \
           --data-binary @"${{ matrix.platform.name }}" \
           "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ needs.conditions.outputs.release-id }}/assets?name=${{ matrix.platform.name }}"
+        shell: bash
+
+      - name: Runtime Analyzer
+        if: needs.conditions.outputs.release == 'true'
+        run: |
+          start=${{ env.start_time }}
+          end=$(date +%s)
+          time_taken=$((end-start))
+          echo "Time taken for ${{ matrix.platform.release_for }}: $time_taken s"
         shell: bash
 
   release-crate:
