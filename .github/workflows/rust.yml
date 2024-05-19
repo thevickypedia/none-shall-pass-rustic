@@ -66,7 +66,6 @@ jobs:
         shell: bash
 
   build-and-upload:
-    if: ${{ github.event_name == 'release' }}
     needs: conditions
     strategy:
       matrix:
@@ -95,16 +94,6 @@ jobs:
     name: Upload asset for ${{ matrix.platform.release_for }}
     runs-on: ${{ matrix.platform.release_for }}
     steps:
-      - name: Release ID Propagation
-        run: |
-          if [ -n "${{ needs.conditions.outputs.release-id }}" ]; then
-            echo "Release ID propagated: ${{ needs.conditions.outputs.release-id }}"
-          else
-            echo "Release ID propagation failed. Exiting.."
-            exit 1
-          fi
-          echo "start_time=$(date +%s)" >> "$GITHUB_ENV"
-        shell: bash
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -118,6 +107,7 @@ jobs:
           printf '*%.0s' {1..60} && printf "\n"
           echo "Updated rust version: $(rustc --version)"
           printf '*%.0s' {1..60} && printf "\n"
+        shell: bash
       - name: Build
         run: |
           if [ "${{ needs.conditions.outputs.release }}" == "true" ]; then
@@ -125,6 +115,7 @@ jobs:
           else
             cargo build --verbose
           fi
+        shell: bash
       - name: Run tests
         run: |
           if [ "${{ needs.conditions.outputs.release }}" == "true" ]; then
@@ -132,9 +123,22 @@ jobs:
           else
             cargo test --verbose
           fi
+        shell: bash
+
+      - name: Release ID Propagation
+        if: needs.conditions.outputs.release == 'true'
+        run: |
+          if [ -n "${{ needs.conditions.outputs.release-id }}" ]; then
+            echo "Release ID propagated: ${{ needs.conditions.outputs.release-id }}"
+          else
+            echo "Release ID propagation failed. Exiting.."
+            exit 1
+          fi
+          echo "start_time=$(date +%s)" >> "$GITHUB_ENV"
+        shell: bash
 
       - name: Copy Asset (Windows)
-        if: matrix.platform.release_for == 'windows*'
+        if: needs.conditions.outputs.release == 'true' && matrix.platform.release_for == 'windows*'
         run: |
           mkdir -p ${{ matrix.platform.pkg-name }}
           cp ${{ matrix.platform.bin }} ${{ matrix.platform.pkg-name }}/${{ matrix.platform.bin }}
@@ -142,7 +146,7 @@ jobs:
         shell: pwsh
 
       - name: Copy Asset (macOS/Linux/RaspberryPi)
-        if: matrix.platform.release_for != 'windows*'
+        if: needs.conditions.outputs.release == 'true' && matrix.platform.release_for != 'windows*'
         run: |
           mkdir -p ${{ matrix.platform.pkg-name }}
           cp ${{ matrix.platform.bin }} ${{ matrix.platform.pkg-name }}/${{ matrix.platform.bin }}
