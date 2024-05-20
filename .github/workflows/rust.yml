@@ -71,21 +71,26 @@ jobs:
     strategy:
       matrix:
         platform:
-          # Naming Convention: {package_name}-{operating_system}.{archive_format}
-          - release_for: macos-latest
+          # Naming Convention: {package_name}-{operating_system}-{architecture}.{archive_format}
+          - release_for: darwin-amd64
             bin: none-shall-pass
-            name: none-shall-pass-darwin.tar.gz
-            pkg-name: none-shall-pass-darwin
+            name: none-shall-pass-darwin-amd64.tar.gz
+            pkg-name: none-shall-pass-darwin-amd64
 
-          - release_for: ubuntu-latest
+          - release_for: darwin-arm64
             bin: none-shall-pass
-            name: none-shall-pass-linux.tar.gz
-            pkg-name: none-shall-pass-linux
+            name: none-shall-pass-darwin-arm64.tar.gz
+            pkg-name: none-shall-pass-darwin-arm64
 
-          - release_for: windows-latest
+          - release_for: linux-amd64
+            bin: none-shall-pass
+            name: none-shall-pass-linux-amd64.tar.gz
+            pkg-name: none-shall-pass-linux-amd64
+
+          - release_for: windows-amd64
             bin: none-shall-pass.exe
-            name: none-shall-pass-windows.zip
-            pkg-name: none-shall-pass-windows
+            name: none-shall-pass-windows-amd64.zip
+            pkg-name: none-shall-pass-windows-amd64
 
     name: Upload asset for ${{ matrix.platform.release_for }}
     runs-on: ${{ matrix.platform.release_for }}
