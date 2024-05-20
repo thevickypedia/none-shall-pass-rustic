@@ -95,6 +95,18 @@ jobs:
     name: Upload asset for ${{ matrix.platform.release_for }}
     runs-on: ${{ matrix.platform.release_for }}
     steps:
+      - name: Release ID Propagation
+        if: needs.conditions.outputs.release == 'true'
+        run: |
+          if [ -n "${{ needs.conditions.outputs.release-id }}" ]; then
+            echo "Release ID propagated: ${{ needs.conditions.outputs.release-id }}"
+          else
+            echo "Release ID propagation failed. Exiting.."
+            exit 1
+          fi
+          echo "start_time=$(date +%s)" >> "$GITHUB_ENV"
+        shell: bash
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -126,18 +138,6 @@ jobs:
           else
             cargo test --verbose
           fi
-        shell: bash
-
-      - name: Release ID Propagation
-        if: needs.conditions.outputs.release == 'true'
-        run: |
-          if [ -n "${{ needs.conditions.outputs.release-id }}" ]; then
-            echo "Release ID propagated: ${{ needs.conditions.outputs.release-id }}"
-          else
-            echo "Release ID propagation failed. Exiting.."
-            exit 1
-          fi
-          echo "start_time=$(date +%s)" >> "$GITHUB_ENV"
         shell: bash
 
       - name: Copy Asset (Windows)

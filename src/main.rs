@@ -12,9 +12,10 @@ use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use regex::Regex;
 
+use regex::Regex;
 use reqwest::blocking::Client;
+
 use crate::lookup::Hyperlink;
 
 mod lookup;
@@ -28,7 +29,7 @@ mod parser;
 struct JSONResponse {
     filename: String,
     filepath: String,
-    hyperlink: Hyperlink
+    hyperlink: Hyperlink,
 }
 
 struct ValidationResult {
@@ -84,7 +85,7 @@ fn runner(
     cwd: String,
     exclusions: Vec<String>,
     counter: Arc<Mutex<HashMap<String, Arc<Mutex<i32>>>>>,
-    client: Client
+    client: Client,
 ) -> ValidationResult {
     let mut urls = 0;
     log::info!("Reading file: {}", md_file);
@@ -94,7 +95,7 @@ fn runner(
             log::error!("{}", error);
             return ValidationResult {
                 count: urls,
-                errors: vec![JSONResponse::default()]
+                errors: vec![JSONResponse::default()],
             };
         }
     };
@@ -107,21 +108,20 @@ fn runner(
         let client_cloned = client.clone();
         let counter_cloned = counter.clone();
         let responses_cloned = responses.clone();
-        let filepath;
-        if md_file.contains(".wiki") {
+        let filepath = if md_file.contains(".wiki") {
             // If the markdown file is in a wiki, removes preceding text, and the .md extension
             let pattern = Regex::new(r"[^.]+\.wiki").unwrap();
-            filepath = pattern
-                .replace(&md_file, "wiki")
+            pattern
+                .replace(md_file, "wiki")
                 .trim_end_matches(".md")
-                .to_string();
+                .to_string()
         } else {
             // If the markdown file is in repo, removes the current working directory and path prefix
-            filepath = md_file
+            md_file
                 .trim_start_matches(&cwd)
-                .trim_start_matches("/")
-                .to_string();
-        }
+                .trim_start_matches('/')
+                .to_string()
+        };
         let handle = thread::spawn(move || {
             let response = connection::verify_url(&hyperlink, exclusions_cloned, client_cloned);
             if response.ok {
@@ -137,7 +137,7 @@ fn runner(
                 let json_response = JSONResponse {
                     filename,
                     filepath,
-                    hyperlink: response.hyperlink
+                    hyperlink: response.hyperlink,
                 };
                 locked_responses.push(json_response);
             }
@@ -209,7 +209,7 @@ fn main() {
                 current_working_dir_cloned,
                 exclusions_cloned,
                 counter_cloned,
-                client_cloned
+                client_cloned,
             );
             log::info!(
                 "Scanned '{}' with {} URLs",
