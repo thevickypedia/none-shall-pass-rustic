@@ -1,7 +1,7 @@
 # https://doc.rust-lang.org/cargo/getting-started/first-steps.html#first-steps-with-cargo
 [package]
 name = "none-shall-pass"
-version = "0.2.2"
+version = "0.2.3-a"
 description = "Artifact for GitHub Action to validate hyperlinks in all markdown files"
 license = "MIT"
 rust-version = "1.78.0"

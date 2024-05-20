@@ -12,6 +12,7 @@ jobs:
     outputs:
       release: ${{ steps.set-release-flag.outputs.release }}
       release-id: ${{ steps.get-release-id.outputs.release_id }}
+      release-tag: ${{ steps.get-release-id.outputs.release_tag }}
     runs-on: thevickypedia-default
     steps:
       - uses: actions/checkout@v4
@@ -47,6 +48,7 @@ jobs:
         if: env.release == 'true'
         run: |
           release_tag="v${{ env.pkg_version }}"
+          echo "release_tag=$release_tag" >> $GITHUB_OUTPUT
           cargo_prerelease=("alpha" "beta" "rc")
           prerelease=false
           for cargo_pre in "${cargo_prerelease[@]}"; do
@@ -141,7 +143,7 @@ jobs:
         shell: bash
 
       - name: Copy Asset (Windows)
-        if: needs.conditions.outputs.release == 'true' && matrix.platform.release_for == 'windows*'
+        if: needs.conditions.outputs.release == 'true' && startsWith(matrix.platform.release_for, 'windows')
         run: |
           mkdir -p ${{ matrix.platform.pkg-name }}
           cp target/release/${{ matrix.platform.bin }} ${{ matrix.platform.pkg-name }}/${{ matrix.platform.bin }}
@@ -149,7 +151,7 @@ jobs:
         shell: pwsh
 
       - name: Copy Asset (macOS/Ubuntu)
-        if: needs.conditions.outputs.release == 'true' && matrix.platform.release_for != 'windows*'
+        if: needs.conditions.outputs.release == 'true' && !startsWith(matrix.platform.release_for, 'windows')
         run: |
           mkdir -p ${{ matrix.platform.pkg-name }}
           cp target/release/${{ matrix.platform.bin }} ${{ matrix.platform.pkg-name }}/${{ matrix.platform.bin }}
@@ -165,13 +167,16 @@ jobs:
           "https://uploads.github.com/repos/${{ github.repository }}/releases/${{ needs.conditions.outputs.release-id }}/assets?name=${{ matrix.platform.name }}"
         shell: bash
 
-      - name: Runtime Analyzer
+      - name: Summary
         if: needs.conditions.outputs.release == 'true'
         run: |
           start=${{ env.start_time }}
           end=$(date +%s)
           time_taken=$((end-start))
-          echo "Time taken for ${{ matrix.platform.release_for }}: $time_taken s"
+          tag_v=${{ needs.conditions.outputs.release-tag }}
+          url="${{ github.server_url }}/${{ github.repository }}/releases/download/$tag_v/${{ matrix.platform.name }}"
+          hyperlink="[${{ matrix.platform.release_for }}]($url)"
+          echo "🚀 Built for $hyperlink in $time_taken seconds" >> $GITHUB_STEP_SUMMARY
         shell: bash
 
   release-crate:
